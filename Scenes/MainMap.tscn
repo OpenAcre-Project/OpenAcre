@@ -1,4 +1,63 @@
 [gd_scene format=3 uid="uid://buhvefume1u"]
 
-[node name="Node3D" type="Node3D" unique_id=1300510752]
-transform = Transform3D(0.97195756, -0.19245663, 0.13512552, 0.20620292, 0.97375774, -0.09631314, -0.11304341, 0.12147557, 0.9861363, 0, 0, 0)
+[ext_resource type="PackedScene" uid="uid://cg2nmbklw327w" path="res://Scenes/Player.tscn" id="1_player_tscn"]
+[ext_resource type="PackedScene" uid="uid://dxe8q3v5p6wjm" path="res://Scenes/Apple.tscn" id="2_apple_tscn"]
+[ext_resource type="PackedScene" uid="uid://b5snt7h5v27g" path="res://Scenes/GridManager.tscn" id="3_grid_tscn"]
+[ext_resource type="PackedScene" uid="uid://bia3lhg2ljbaw" path="res://Scenes/TestBoxVehicle.tscn" id="5_testbox_tscn"]
+[ext_resource type="Script" uid="uid://c2ad2fwjuebs5" path="res://Scripts/debug/DeveloperConsole.gd" id="6_dev_console"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_env"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_env")
+tonemap_mode = 2
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_floor"]
+size = Vector2(60, 60)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0.247059, 0.403922, 0.180392, 1)
+
+[sub_resource type="ConcavePolygonShape3D" id="ConcavePolygonShape3D_floor"]
+data = PackedVector3Array(30, 0, 30, -30, 0, 30, 30, 0, -30, -30, 0, 30, -30, 0, -30, 30, 0, -30)
+
+[node name="MainMap" type="Node3D" unique_id=1826085064]
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1615675974]
+transform = Transform3D(-0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, 0.75, -0.433013, 0, 0, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1424492466]
+environment = SubResource("Environment_main")
+
+[node name="Floor" type="StaticBody3D" parent="." unique_id=503388267]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Floor" unique_id=2049658375]
+mesh = SubResource("PlaneMesh_floor")
+surface_material_override/0 = SubResource("StandardMaterial3D_floor")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Floor" unique_id=1057242402]
+shape = SubResource("ConcavePolygonShape3D_floor")
+
+[node name="GridManager" parent="." unique_id=1405629668 instance=ExtResource("3_grid_tscn")]
+
+[node name="TestBoxVehicle" parent="." unique_id=1609068477 instance=ExtResource("5_testbox_tscn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 2, 5)
+
+[node name="Player" parent="." unique_id=889781689 instance=ExtResource("1_player_tscn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+
+[node name="Apple" parent="." unique_id=1075878461 instance=ExtResource("2_apple_tscn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2, -3)
+
+[node name="Apple2" parent="." unique_id=674747688 instance=ExtResource("2_apple_tscn")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 2, -3)
+
+[node name="DeveloperConsole" type="CanvasLayer" parent="." unique_id=1055537379]
+script = ExtResource("6_dev_console")

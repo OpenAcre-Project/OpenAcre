@@ -1,0 +1,23 @@
+site_name: Open Farm Documentation
+site_url: ""
+nav:
+  - Overview: index.md
+  - Architecture:
+      - Core Runtime: core_runtime.md
+      - Chunk System: chunk_system.md
+      - Developer Console: developer_console.md
+      - Vehicle Physics: vehicles.md
+  - Systems:
+      - Terrain3D Rendering: terrain3d_rendering.md
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: deep orange
+    accent: deep orange
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - toc:
+      permalink: true

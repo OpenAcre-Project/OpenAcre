@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://7ksrajqraha7"]
+
+[ext_resource type="PackedScene" uid="uid://be7mvh7kqvja0" path="res://Scenes/WorldMap.tscn" id="1_worldmap"]
+[ext_resource type="Script" uid="uid://cp51xoy18knm6" path="res://Scripts/core/Main.gd" id="4_main_gd"]
+
+[node name="Main" type="Node" unique_id=1080584460]
+script = ExtResource("4_main_gd")
+
+[node name="Simulation_Core" type="Node" parent="." unique_id=318729194]
+
+[node name="View_Manager" type="Node" parent="." unique_id=1367639536]
+
+[node name="3D_World" type="Node3D" parent="View_Manager" unique_id=172097142]
+
+[node name="WorldMap" parent="View_Manager/3D_World" unique_id=998509710 instance=ExtResource("1_worldmap")]
+
+[node name="2D_Map" type="Node2D" parent="View_Manager" unique_id=1904661132]
+
+[node name="UI_Layer" type="Node" parent="." unique_id=1198430084]

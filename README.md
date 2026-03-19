@@ -1,3 +1,7 @@
+<!-- [![License](https://img.shields.io/badge/License-MIT-green)](https://gitlab.com/YouFoundJK/soap-gap-tip3p-water/-/blob/main/LICENSE) -->
+[![Docs](https://img.shields.io/badge/Documentation-v_1.0-blue)](https://soap-gap-tip3p-water-757ee2.gitlab.io/)
+
+
 # Project: OpenFarm Survival
 
 ## ⚠️ Required Dependencies
@@ -8,3 +12,11 @@ This project uses the **Godot Jolt** physics engine for stable vehicle towing an
 2. In the Godot Editor, click **AssetLib** at the top.
 3. Search for **Godot Jolt**, download it, and install it.
 4. Restart Godot. The physics engine will automatically hook up, and the game is ready to play.
+
+## Project Architecture
+
+See `docs/ARCHITECTURE.md` for the current script layout and extension guidelines.
+
+## World Map
+
+Downloaded from https://www.farming-simulator.com/mod.php?mod_id=335352&title=fs2025

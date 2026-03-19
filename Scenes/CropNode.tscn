@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://b8tqk6h3g0p5c"]
+
+[ext_resource type="Script" path="res://Scripts/farm/CropNode.gd" id="1_crop_gd"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_crop"]
+size = Vector3(0.5, 0.5, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_crop"]
+albedo_color = Color(0.2, 0.8, 0.2, 1)
+
+[node name="CropNode" type="Node3D"]
+script = ExtResource("1_crop_gd")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+mesh = SubResource("BoxMesh_crop")
+surface_material_override/0 = SubResource("StandardMaterial3D_crop")

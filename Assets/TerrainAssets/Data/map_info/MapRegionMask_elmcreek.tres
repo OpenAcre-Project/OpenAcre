@@ -1,0 +1,8 @@
+[gd_resource type="Resource" script_class="MapRegionMask" format=3 uid="uid://bijkekrlclv3v"]
+
+[ext_resource type="Script" uid="uid://e8hn2qjpoxpu" path="res://Scripts/world/MapRegionMask.gd" id="1_nay2p"]
+[ext_resource type="Texture2D" uid="uid://bkfw87j5mym5j" path="res://Assets/TerrainAssets/Data/map_info/infoLayer_tipCollision.png" id="1_ond2n"]
+
+[resource]
+script = ExtResource("1_nay2p")
+mask_texture = ExtResource("1_ond2n")

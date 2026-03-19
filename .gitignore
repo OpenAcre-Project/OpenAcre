@@ -2,5 +2,54 @@
 .godot/
 /android/
 
-# Ignore heavy GDExtension binaries
-addons/godot-jolt/
+# Addons policy:
+# - Track source/config/resources for reproducibility
+# - Ignore heavy native binaries/build artifacts
+
+# Keep source by default
+!addons/**/
+
+# Ignore common heavy/binary artifact types inside addons
+addons/**/*.dll
+addons/**/*.so
+addons/**/*.dylib
+addons/**/*.a
+addons/**/*.lib
+addons/**/*.pdb
+addons/**/*.obj
+addons/**/*.o
+addons/**/*.exe
+addons/**/*.bin
+addons/**/*.bc
+addons/**/*.zip
+addons/**/*.7z
+
+# Ignore native/build output folders often shipped with addons
+addons/**/android/
+addons/**/ios/
+addons/**/linux/
+addons/**/macos/
+addons/**/windows/
+addons/**/native/
+addons/**/build/
+addons/**/bin/
+addons/**/.build/
+
+# Explicitly keep common addon source/config/resources
+!addons/**/*.gd
+!addons/**/*.gdshader
+!addons/**/*.gdextension
+!addons/**/*.cfg
+!addons/**/*.tres
+!addons/**/*.res
+!addons/**/README.md
+!addons/**/LICENSE*
+
+Assets/*.png
+*.png.import
+*.glb.import
+
+*.uid
+
+**/exported
+.export-to-txt.*

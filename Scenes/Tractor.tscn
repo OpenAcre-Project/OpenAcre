@@ -1,0 +1,74 @@
+[gd_scene load_steps=5 format=3 uid="uid://cx6g3k7x4q3a"]
+
+[ext_resource type="PackedScene" path="res://Scenes/Vehicle3D.tscn" id="1_vehicle3d_tscn"]
+[ext_resource type="Script" uid="uid://dre8uptiahg17" path="res://Scripts/vehicles/Tractor.gd" id="2_tractor_gd"]
+[ext_resource type="PackedScene" uid="uid://ssfmj32mpdxp" path="res://Assets/Vehicles/lawn_tractor.glb" id="3_visual_glb"]
+
+[sub_resource type="Curve" id="Curve_torque"]
+_data = [Vector2(0, 0.55), 0.0, 1.8, 0, 0, Vector2(0.75, 1), 0.0, 0.0, 0, 0, Vector2(1, 0.72), -2.0, 0.0, 0, 0]
+point_count = 3
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_tractor"]
+size = Vector3(1.6, 1.11875, 2.8663392)
+
+[node name="Tractor" instance=ExtResource("1_vehicle3d_tscn")]
+can_sleep = false
+continuous_cd = true
+script = ExtResource("2_tractor_gd")
+wheel_front_left_visual_path = NodePath("TractorVisual/Wheels/WheelFL")
+wheel_front_right_visual_path = NodePath("TractorVisual/Wheels/WheelFR")
+wheel_rear_left_visual_path = NodePath("TractorVisual/Wheels/WheelRL")
+wheel_rear_right_visual_path = NodePath("TractorVisual/Wheels/WheelRR")
+front_visual_steering_axis = 1
+visual_spin_axis = 0
+max_steering_angle = 0.42
+traction_control_max_slip = 6.0
+max_torque = 520.0
+max_rpm = 4200.0
+idle_rpm = 950.0
+torque_curve = SubResource("Curve_torque")
+gear_ratios = Array[float]([4.2, 2.5, 1.6, 1.15, 0.86])
+final_drive = 3.9
+reverse_ratio = 3.7
+vehicle_mass = 1600.0
+front_weight_distribution = 0.5
+center_of_gravity_height_offset = -0.45
+front_spring_length = 0.25
+front_arb_ratio = 0.22
+rear_spring_length = 0.25
+rear_arb_ratio = 0.3
+front_tire_radius = 0.45
+front_tire_width = 260.0
+rear_tire_radius = 0.45
+rear_tire_width = 380.0
+
+[node name="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.0057431, 0.025936723)
+shape = SubResource("BoxShape3D_tractor")
+
+[node name="VehicleVisual" parent="."]
+visible = false
+
+[node name="TractorVisual" parent="." instance=ExtResource("3_visual_glb")]
+transform = Transform3D(-1, 0, 8.742278e-08, 0, 1, 0, -8.742278e-08, 0, -1, 0.024276521, 0, -0.027624656)
+
+[node name="WheelFrontLeft" parent="."]
+transform = Transform3D(-0.75, 0, 6.556708e-08, 0, 0.75000006, 0, -6.556708e-08, 0, -0.75, -0.59914064, 0, -0.841855)
+
+[node name="WheelFrontRight" parent="."]
+transform = Transform3D(-1, 0, 8.7422784e-08, 0, 1.0000001, 0, -8.742278e-08, 0, -1.0000001, 0.6282986, 0, -0.8889721)
+
+[node name="WheelRearLeft" parent="."]
+transform = Transform3D(-1, 0, 8.7422784e-08, 0, 1.0000001, 0, -8.742278e-08, 0, -1.0000001, -0.59749115, 0, 0.8260149)
+
+[node name="WheelRearRight" parent="."]
+transform = Transform3D(-1, 0, 8.7422784e-08, 0, 1.0000001, 0, -8.742278e-08, 0, -1.0000001, 0.6047479, 0, 0.8633754)
+
+[node name="SpringArm3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.8660255, 0.50000006, 0, -0.50000006, 0.8660255, 0, 1.7036319, 0)
+spring_length = 5.0
+
+[node name="ExitPoint" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.6, 0, 0)
+
+[editable path="TractorVisual"]

@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://b5snt7h5v27g"]
+
+[ext_resource type="Script" path="res://Scripts/farm/GridManager.gd" id="1_grid_gd"]
+
+[node name="GridManager" type="Node3D"]
+script = ExtResource("1_grid_gd")

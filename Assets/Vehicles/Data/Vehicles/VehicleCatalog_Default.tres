@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="VehicleCatalog" format=3 uid="uid://62giv4pyaw2t"]
+
+[ext_resource type="Script" uid="uid://da4m5f7l011bv" path="res://Scripts/simulation/resources/VehicleCatalog.gd" id="1_catalog_script"]
+[ext_resource type="Script" uid="uid://bdeb0jxqvmi3h" path="res://Scripts/simulation/resources/VehicleSpec.gd" id="2_spec_script"]
+[ext_resource type="PackedScene" uid="uid://cx6g3k7x4q3a" path="res://Scenes/Tractor.tscn" id="3_tractor_scene"]
+
+[sub_resource type="Resource" id="Resource_vehicle_spec_tractor"]
+script = ExtResource("2_spec_script")
+spec_id = &"tractor"
+display_name = "tractor"
+brand = "tractor"
+vehicle_scene = ExtResource("3_tractor_scene")
+property_overrides = {
+&"front_visual_steering_axis": 1,
+&"invert_visual_steering_direction": false,
+&"max_speed": 45.0,
+&"max_torque": 520.0,
+&"visual_spin_axis": 0
+}
+
+[resource]
+script = ExtResource("1_catalog_script")
+specs = Array[ExtResource("2_spec_script")]([SubResource("Resource_vehicle_spec_tractor")])

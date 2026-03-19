@@ -1,0 +1,1 @@
+extends Vehicle3D

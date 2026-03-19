@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://dxe8q3v5p6wjm"]
+
+[ext_resource type="Script" path="res://Scripts/interactables/Apple.gd" id="1_apple_gd"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_apple"]
+size = Vector3(0.3, 0.3, 0.3)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_apple"]
+albedo_color = Color(0.8, 0.1, 0.1, 1)
+
+[sub_resource type="BoxMesh" id="BoxMesh_apple"]
+material = SubResource("StandardMaterial3D_apple")
+size = Vector3(0.3, 0.3, 0.3)
+
+[node name="Apple" type="RigidBody3D"]
+script = ExtResource("1_apple_gd")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_apple")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_apple")

@@ -79,10 +79,10 @@ func _draw_grid(center_chunk: Vector2i, ground_y: float) -> void:
 	var inset := 0.1 # Shrink the visual tiles slightly so there's a mini gap between them
 
 	# We will retrieve Surface Y from FarmData if requested, otherwise flat
-	var use_dynamic_height = _terrain_height_supported()
+	var use_dynamic_height: bool = _terrain_height_supported()
 	var terrain_data: Object = null
 	if use_dynamic_height:
-		var tb = get_tree().get_first_node_in_group("terrain_node")
+		var tb: Node = get_tree().get_first_node_in_group("terrain_node")
 		if tb != null and tb.has_method("get_data"):
 			terrain_data = tb.get_data()
 
@@ -102,12 +102,12 @@ func _draw_grid(center_chunk: Vector2i, ground_y: float) -> void:
 						surface_y = terrain_data.get_height(Vector2(world_x + 0.5, world_z + 0.5)) + y_offset
 
 					# Check validity using FarmData (which wraps MapRegionMask)
-					var is_farmable = FarmData.can_plow_at(check_pos)
+					var is_farmable: bool = GameManager.session.farm.can_plow_at(check_pos)
 
-					var p1 = Vector3(world_x + inset, surface_y, world_z + inset)
-					var p2 = Vector3(world_x + tile_size - inset, surface_y, world_z + inset)
-					var p3 = Vector3(world_x + tile_size - inset, surface_y, world_z + tile_size - inset)
-					var p4 = Vector3(world_x + inset, surface_y, world_z + tile_size - inset)
+					var p1 := Vector3(world_x + inset, surface_y, world_z + inset)
+					var p2 := Vector3(world_x + tile_size - inset, surface_y, world_z + inset)
+					var p3 := Vector3(world_x + tile_size - inset, surface_y, world_z + tile_size - inset)
+					var p4 := Vector3(world_x + inset, surface_y, world_z + tile_size - inset)
 
 					if is_farmable:
 						farmable_vertices.append_array([p1, p2, p3, p1, p3, p4])
@@ -129,8 +129,8 @@ func _draw_grid(center_chunk: Vector2i, ground_y: float) -> void:
 		_immediate_mesh.surface_end()
 
 func _terrain_height_supported() -> bool:
-	var tb = get_tree().get_first_node_in_group("terrain_node")
+	var tb: Node = get_tree().get_first_node_in_group("terrain_node")
 	if tb != null and tb.has_method("get_data"):
-		var data = tb.get_data()
+		var data: Resource = tb.get_data()
 		return data != null and data.has_method("get_height")
 	return false

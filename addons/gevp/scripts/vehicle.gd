@@ -1,6 +1,10 @@
 # Portions are Copyright (c) 2021 Dechode
 # https://github.com/Dechode/Godot-Advanced-Vehicle
 
+## [Core Addon] The base physics engine class (GEVP).
+## This class handles the low-level RigidBody3D physics integration,
+## including engine torque, gearboxes, and axle simulation.
+## [Vehicle3D] inherits from this to add game-specific features.
 class_name Vehicle
 extends RigidBody3D
 

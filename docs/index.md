@@ -1,31 +1,57 @@
-# Open Farm Documentation
+# :house: Open Farm Documentation
 
-Welcome to the Open Farm Godot prototype documentation. This project is organized by domain first, then by scene-facing scripts.
+Welcome to the **Open Farm** Godot prototype. This project is a data-driven farming simulation engine designed for scalability, persistence, and performance.
 
-## Architecture Philosophy
+!!! info "Architecture at a Glance"
+    This project is organized by domain first, then by scene-facing scripts, strictly following a **Logic-Visual Separation** pattern.
 
-The runtime is strictly split into logic and view layers:
-- **Logic** (`Singletons/*`): headless simulation and authoritative state.
-- **View** (`Scenes/*` + `Scripts/*`): 3D/2D presentation and player-facing physics.
+---
 
-The primary boot target is `project.godot` which runs `Scenes/Main.tscn`.
+## :video_game: Game Systems (User & Modder Guide)
 
-### Scene Ownership Hierarchy
+If you are looking to understand how the game handles or how to modify existing mechanics, start here:
 
-- `Main` (Node)
-  - `Main/View_Manager/3D_World/WorldMap` (3D world instance)
-  - `Main/UI_Layer/*` (UI, debug tools, developer console independent of the 3D world)
+- **[:tractor: Vehicle Physics & Driving](systems/vehicles.md)**: Handling, realistic steering, and persistence.
+- **[:video_camera: Camera System](systems/camera.md)**: Shared OrbitCameraController and GTA-style behaviors.
+- **[:clock1: Time & Day/Night Cycle](systems/day_night_cycle.md)**: Time management and visual world transitions.
+- **[:package: Items & Inventory](systems/items_and_inventory.md)**: Data-driven items, storage, and mass simulation.
 
-## Folder Layout
+---
 
-- `Scripts/`: Scene-facing scripts used directly by `.tscn` files.
-- `Scripts/farm/`: Core farm domain models and helpers.
-- `Scripts/farm/tools/`: Farm interaction tools (hoe, seeds, etc.).
-- `Scripts/player/`: Player controllers split by responsibility.
-- `Scripts/vehicles/`: Shared vehicle logic and GEVP integrations.
-- `Scripts/interactables/`: World objects the player can interact with.
-- `Scripts/core/`: Shared base abstractions.
-- `Scripts/simulation/resources/`: Typed state resources (`PlayerData`, `VehicleData`).
-- `Singletons/`: Global systems (`TimeManager`, `FarmData`, `SimulationCore`) registered in `project.godot`.
+## :classical_building: Technical Architecture (Developer Guide)
 
-Use the sidebar navigation to explore specific systems in depth.
+For developers looking to extend the core engine or understand the data pipeline:
+
+- **[:map: Architecture Overview](architecture/overview.md)**: Our Logic-Visual separation philosophy.
+- **[:loop: Core Runtime Flow](architecture/core_runtime.md)**: Simulation sequence and state management.
+- **[:window: UI Architecture](architecture/ui_architecture.md)**: Headless data pipeline and decoupled interfaces.
+- **[:world_map: Map Fields Logic](architecture/map_fields_architecture.md)**: Data-driven fields and batch rendering.
+
+---
+
+## :art: Rendering & Performance
+
+Low-level systems focusing on visual fidelity and world streaming:
+
+- **[:mountain: Terrain3D Rendering](rendering/terrain3d_rendering.md)**: Heightmaps and live texture painting.
+- **[:grid: Chunk & Catch-Up System](rendering/chunk_system.md)**: World-space optimization and logical consistency.
+
+---
+
+## :hammer_and_wrench: Development Workspace
+
+Tools and internal documentation for managing the codebase:
+
+- **[:terminal: Developer Console](dev/developer_console.md)**: Debugging tools and cheat commands.
+- **[:memo: Addon Patch Notes](dev/addon_patches.md)**: Modifications made to third-party plugins.
+
+---
+
+### :file_folder: Project Structure Breakdown
+
+| Path | Purpose |
+| --- | --- |
+| `Scripts/` | Scene-facing scripts used directly by `.tscn` files. |
+| `Scripts/simulation/` | Authoritative state resources (`PlayerData`, `VehicleData`). |
+| `Singletons/` | Global systems (`TimeManager`, `SimulationCore`) registered in project settings. |
+| `Scenes/` | 3D/2D presentation layers. |

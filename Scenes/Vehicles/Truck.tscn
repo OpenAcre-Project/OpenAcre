@@ -1,0 +1,46 @@
+[gd_scene format=3 uid="uid://8s46ope2b1lg"]
+
+[ext_resource type="PackedScene" path="res://Scenes/Vehicles/Vehicle3D.tscn" id="1_vehicle3d_tscn"]
+[ext_resource type="PackedScene" uid="uid://3ceqpxe7d5wf" path="res://Assets/Vehicles/Main_tractor.glb" id="3_h343l"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2s27y"]
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_h343l"]
+
+[node name="Truck" unique_id=1818145156 instance=ExtResource("1_vehicle3d_tscn")]
+vehicle_spec_id = &"truck"
+wheel_front_left_visual_path = NodePath("Main_tractor/Wheels/EmptyFL/WheelFL")
+wheel_front_right_visual_path = NodePath("Main_tractor/Wheels/EmptyFR/WheelFR")
+wheel_rear_left_visual_path = NodePath("Main_tractor/Wheels/EmptyRL/WheelRL")
+wheel_rear_right_visual_path = NodePath("Main_tractor/Wheels/EmptyRR/WheelRR")
+torque_curve = null
+
+[node name="CollisionShape3D" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5648072, 0.042382956)
+debug_color = Color(0.8414612, 0.0011202913, 0.92115015, 0.41960785)
+
+[node name="VehicleVisual" parent="." index="1"]
+visible = false
+
+[node name="WheelFrontLeft" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.889, 0, -1.174)
+
+[node name="WheelFrontRight" parent="." index="3"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.86, 0, -1.231)
+
+[node name="WheelRearLeft" parent="." index="4"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.936, 0, 1.271)
+
+[node name="WheelRearRight" parent="." index="5"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.901, 0, 1.24)
+
+[node name="Main_tractor" parent="." index="8" unique_id=1837866864 instance=ExtResource("3_h343l")]
+transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0, 0)
+
+[node name="attacherJoints" parent="Main_tractor" index="0" unique_id=392024502]
+surface_material_override/0 = SubResource("StandardMaterial3D_2s27y")
+
+[node name="cabin" parent="Main_tractor" index="1" unique_id=140642134]
+surface_material_override/0 = SubResource("StandardMaterial3D_h343l")
+
+[editable path="Main_tractor"]

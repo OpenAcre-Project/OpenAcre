@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3 uid="uid://dd8xw4s"]
+
+[ext_resource type="Script" path="res://Scenes/UI/TimeUI.gd" id="1_t"]
+
+[node name="TimeUI" type="PanelContainer"]
+script = ExtResource("1_t")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="TimeLabel" type="Label" parent="Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Day 1 - 08:00"
+horizontal_alignment = 2

@@ -70,12 +70,30 @@ func process_movement(delta: float, movement_enabled: bool = true, reference_bas
 		is_moving = input_dir.length_squared() > 0.0
 		is_sprinting = Input.is_physical_key_pressed(KEY_SHIFT)
 
-		# Prevent jumping while committed to a roll
-		var can_jump := current_is_on_floor and _landing_state != &"LandRolling"
+		# 4b. Apply Encumbrance Modifiers
+		var encumbrance_multiplier: float = 1.0
+		var can_jump_mass := true
+		
+		if _player_data != null:
+			var current_mass := _player_data.get_total_encumbrance_mass()
+			var max_mass := _player_data.pockets.max_mass
+			if _player_data.equipment_back:
+				max_mass += 25.0 # Assume backpack increases weight limit
+			
+			var soft_limit := max_mass * 0.5
+			if current_mass > soft_limit:
+				var encumbrance_factor := (current_mass - soft_limit) / (max_mass - soft_limit + 0.001)
+				encumbrance_multiplier = clampf(1.0 - (encumbrance_factor * 0.8), 0.2, 1.0)
+				
+			if current_mass > max_mass * 1.5: # Extremely heavy
+				can_jump_mass = false
+
+		# Prevent jumping while committed to a roll or too heavy
+		var can_jump := current_is_on_floor and _landing_state != &"LandRolling" and can_jump_mass
 		if Input.is_action_just_pressed("ui_accept") and can_jump:
 			_player.velocity.y = _player.jump_velocity
 
-		var speed: float = (_player.sprint_speed if is_sprinting else _player.walk_speed) * speed_multiplier
+		var speed: float = (_player.sprint_speed if is_sprinting else _player.walk_speed) * speed_multiplier * encumbrance_multiplier
 
 		if is_sprinting and is_moving and _player_data != null:
 			_player_data.burn_energy(delta)

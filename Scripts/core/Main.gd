@@ -1,6 +1,6 @@
 extends Node
 
-@export var world_map_scene: PackedScene = preload("res://Scenes/WorldMap.tscn")
+@export var world_map_scene: PackedScene = preload("res://Scenes/World/WorldMap.tscn")
 
 @onready var _world_3d_container: Node3D = get_node("View_Manager/3D_World") as Node3D
 @onready var _map_2d_container: Node2D = get_node("View_Manager/2D_Map") as Node2D
@@ -12,13 +12,24 @@ const _SETTING_ENABLE_DEVCONSOLE := "game/debug/enable_developer_console"
 const _SETTING_ENABLE_DEBUG_OVERLAY := "game/debug/enable_debug_overlay"
 
 func _ready() -> void:
+	GameInput.ensure_default_bindings()
 	_world_instance = _world_3d_container.get_node_or_null("WorldMap")
+	_instantiate_ui()
 	_instantiate_debug_tools()
 
 	if _world_instance != null:
 		MapManager.populate_world(_world_instance)
 	else:
 		set_3d_world_loaded(true)
+
+func _instantiate_ui() -> void:
+	if _ui_layer == null:
+		return
+	
+	var master_ui_scene: PackedScene = load("res://Scenes/UI/MasterUI.tscn")
+	if master_ui_scene:
+		var master_ui: Node = master_ui_scene.instantiate()
+		_ui_layer.add_child(master_ui)
 
 func _instantiate_debug_tools() -> void:
 	if _ui_layer == null:
@@ -32,15 +43,6 @@ func _instantiate_debug_tools() -> void:
 			console.name = "DeveloperConsole"
 			console.set_script(console_script)
 			_ui_layer.add_child(console)
-
-	# Debug Overlay — detachable via project setting
-	if _is_setting_enabled(_SETTING_ENABLE_DEBUG_OVERLAY, true):
-		var overlay_script: GDScript = load("res://Scripts/debug/SimulationDebugOverlay.gd") as GDScript
-		if overlay_script != null:
-			var overlay := CanvasLayer.new()
-			overlay.name = "SimulationDebugOverlay"
-			overlay.set_script(overlay_script)
-			_ui_layer.add_child(overlay)
 
 func _is_setting_enabled(setting_name: String, default_value: bool) -> bool:
 	if not ProjectSettings.has_setting(setting_name):

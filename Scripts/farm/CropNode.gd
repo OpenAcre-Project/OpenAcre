@@ -12,11 +12,11 @@ func _ready() -> void:
 	refresh_from_data()
 
 func refresh_from_data() -> void:
-	var tile_data := FarmData.get_tile_data(grid_position)
+	var tile_data := GameManager.session.farm.get_tile_data(grid_position)
 	apply_visual_from_tile_data(tile_data)
 
 func apply_visual_from_tile_data(tile_data: FarmTileData) -> void:
-	var growth_progress := FarmData.get_tile_growth_progress(grid_position)
+	var growth_progress := GameManager.session.farm.get_tile_growth_progress(grid_position)
 	scale = START_SCALE.lerp(FULL_SCALE, growth_progress)
 	set_harvestable_visual(tile_data.state == FarmData.SoilState.HARVESTABLE)
 

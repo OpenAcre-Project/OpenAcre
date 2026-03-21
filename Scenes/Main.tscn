@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://7ksrajqraha7"]
 
-[ext_resource type="PackedScene" uid="uid://be7mvh7kqvja0" path="res://Scenes/WorldMap.tscn" id="1_worldmap"]
+[ext_resource type="PackedScene" uid="uid://be7mvh7kqvja0" path="res://Scenes/World/WorldMap.tscn" id="1_worldmap"]
 [ext_resource type="Script" uid="uid://cp51xoy18knm6" path="res://Scripts/core/Main.gd" id="4_main_gd"]
 
 [node name="Main" type="Node" unique_id=1080584460]

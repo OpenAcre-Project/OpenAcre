@@ -15,7 +15,22 @@ class_name PlayerData
 @export var hydration: float = 100.0
 @export var energy: float = 100.0
 
-# Legacy aliases for backwards compat with SimulationCore.set_player_stats
+# Inventory system
+var pockets: InventoryData = InventoryData.new()
+var equipment_back: ItemInstance = null # Slot for a backpack
+
+func _init() -> void:
+	# Default pocket settings
+	pockets.max_volume = 2.0
+	pockets.max_mass = 5.0
+
+func get_total_encumbrance_mass() -> float:
+	var total: float = pockets.get_current_mass()
+	if equipment_back:
+		total += equipment_back.get_total_mass()
+	return total
+
+# Legacy aliases for backwards compat with GameManager.session.entities.set_player_stats
 var stamina: float:
 	get: return energy
 	set(value): energy = value

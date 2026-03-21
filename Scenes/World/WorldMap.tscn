@@ -1,0 +1,161 @@
+[gd_scene format=3 uid="uid://be7mvh7kqvja0"]
+
+[ext_resource type="Script" uid="uid://7saqkj41tt6u" path="res://Scripts/world/MapDefinition.gd" id="1_ymbeh"]
+[ext_resource type="Resource" uid="uid://bijkekrlclv3v" path="res://Assets/TerrainAssets/Data/map_info/MapRegionMask_elmcreek.tres" id="2_luyaf"]
+[ext_resource type="PackedScene" uid="uid://b5snt7h5v27g" path="res://Scenes/World/GridManager.tscn" id="3_grid_tscn"]
+[ext_resource type="Terrain3DAssets" uid="uid://0lfg0wvqe47v" path="res://Assets/TerrainAssets/MyTerrainAssets.tres" id="7_k2sq4"]
+[ext_resource type="PackedScene" uid="uid://bu05efayr4rj3" path="res://Assets/TerrainAssets/Data/roads.glb" id="8_e6b1v"]
+[ext_resource type="Texture2D" uid="uid://dobef47is21v" path="res://Assets/TerrainAssets/Data/textures/asphalt_albedo_height.png" id="9_0qwcn"]
+[ext_resource type="Script" uid="uid://bpp0hjyyxr428" path="res://Scripts/farm/SoilLayerService.gd" id="9_soil_service"]
+[ext_resource type="Script" uid="uid://dle6o4f2r1dg6" path="res://Scripts/world/VehicleManager.gd" id="9_vehicle_manager"]
+[ext_resource type="Texture2D" uid="uid://ctpc2r8j1g6xa" path="res://Assets/TerrainAssets/Data/textures/asphalt_normal_roughness.png" id="10_3xaw4"]
+[ext_resource type="Resource" uid="uid://62giv4pyaw2t" path="res://Assets/Vehicles/Data/Vehicles/VehicleCatalog_Default.tres" id="10_vehicle_catalog"]
+[ext_resource type="Script" uid="uid://dc2qjaxsmp3xv" path="res://Scripts/world/MapSpawnPoint.gd" id="18_u8pi1"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
+sky_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+ground_horizon_color = Color(0.64625, 0.65575, 0.67075, 1)
+
+[sub_resource type="Sky" id="Sky_env"]
+sky_material = SubResource("ProceduralSkyMaterial_sky")
+
+[sub_resource type="Environment" id="Environment_main"]
+background_mode = 2
+sky = SubResource("Sky_env")
+tonemap_mode = 2
+
+[sub_resource type="Gradient" id="Gradient_6g17r"]
+offsets = PackedFloat32Array(0.2, 1)
+colors = PackedColorArray(1, 1, 1, 1, 0, 0, 0, 1)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_k2sq4"]
+noise_type = 2
+frequency = 0.03
+cellular_jitter = 3.0
+cellular_return_type = 0
+domain_warp_enabled = true
+domain_warp_type = 1
+domain_warp_amplitude = 50.0
+domain_warp_fractal_type = 2
+domain_warp_fractal_lacunarity = 1.5
+domain_warp_fractal_gain = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_e6b1v"]
+noise = SubResource("FastNoiseLite_k2sq4")
+color_ramp = SubResource("Gradient_6g17r")
+seamless = true
+
+[sub_resource type="Terrain3DMaterial" id="Terrain3DMaterial_tp53l"]
+_shader_parameters = {
+&"bias_distance": 512.0,
+&"blend_sharpness": 0.5,
+&"depth_blur": 0.0,
+&"enable_macro_variation": true,
+&"enable_projection": true,
+&"flat_terrain_normals": false,
+&"macro_variation1": Color(1, 1, 1, 1),
+&"macro_variation2": Color(1, 1, 1, 1),
+&"macro_variation_slope": 0.333,
+&"mipmap_bias": 1.0,
+&"noise1_angle": 0.0,
+&"noise1_offset": Vector2(0.5, 0.5),
+&"noise1_scale": 0.04,
+&"noise2_scale": 0.076,
+&"noise_texture": SubResource("NoiseTexture2D_e6b1v"),
+&"projection_threshold": 0.8
+}
+world_background = 0
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_3xaw4"]
+albedo_texture = ExtResource("9_0qwcn")
+roughness_texture = ExtResource("10_3xaw4")
+roughness_texture_channel = 3
+normal_enabled = true
+normal_texture = ExtResource("10_3xaw4")
+heightmap_enabled = true
+heightmap_texture = ExtResource("9_0qwcn")
+
+[node name="MapUS" type="Node3D" unique_id=1934070863]
+script = ExtResource("1_ymbeh")
+field_data_offset = Vector2(1024, 1024)
+region_mask = ExtResource("2_luyaf")
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=1735333707]
+transform = Transform3D(-0.8660249, -0.433013, 0.25, 0, 0.5, 0.8660252, -0.5, 0.75, -0.4330125, 0, 0, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=904518238]
+environment = SubResource("Environment_main")
+
+[node name="Flora_Node" type="Node3D" parent="." unique_id=125343945]
+
+[node name="Buildings_Node" type="Node3D" parent="." unique_id=363595167]
+
+[node name="SoilLayerService" type="Node3D" parent="." unique_id=1110999001]
+script = ExtResource("9_soil_service")
+
+[node name="GridManager" parent="." unique_id=1220356358 instance=ExtResource("3_grid_tscn")]
+
+[node name="VehicleManager" type="Node3D" parent="." unique_id=1745500059]
+script = ExtResource("9_vehicle_manager")
+vehicle_catalog = ExtResource("10_vehicle_catalog")
+
+[node name="spawn_main" type="Marker3D" parent="." unique_id=1750642103]
+transform = Transform3D(0.78928775, 0.6140235, 0, -0.61394536, 0.7891873, 0.015951633, 0.009794678, -0.012590429, 0.99987274, 105.46235, 29.95597, 135.36604)
+script = ExtResource("18_u8pi1")
+
+[node name="Terrain3D" type="Terrain3D" parent="." unique_id=533342128]
+data_directory = "res://Assets/TerrainAssets"
+material = SubResource("Terrain3DMaterial_tp53l")
+assets = ExtResource("7_k2sq4")
+top_level = true
+metadata/_edit_lock_ = true
+
+[node name="DummyCamera3D" type="Camera3D" parent="." unique_id=1221564927]
+current = true
+
+[node name="Roads_Node" type="Node3D" parent="." unique_id=1237289437]
+
+[node name="roads" parent="Roads_Node" unique_id=948623208 instance=ExtResource("8_e6b1v")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1024, -0.08, 1024)
+
+[node name="city_roads" parent="Roads_Node/roads" index="2" unique_id=1587219112]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="countryRoadsHorseRanch" parent="Roads_Node/roads" index="3" unique_id=1270379924]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="countryRoadsPigfarm" parent="Roads_Node/roads" index="4" unique_id=901164818]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="countryRoadsSheepfarm" parent="Roads_Node/roads" index="5" unique_id=428798489]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="dirty-road" parent="Roads_Node/roads" index="6" unique_id=24910277]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="highwayBridges" parent="Roads_Node/roads" index="7" unique_id=1091608409]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="intersections" parent="Roads_Node/roads" index="8" unique_id=568332947]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="outside" parent="Roads_Node/roads" index="9" unique_id=525897057]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="pavements-shopping" parent="Roads_Node/roads" index="10" unique_id=1566672819]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="roadsHill" parent="Roads_Node/roads" index="11" unique_id=1836275099]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="roadsHill02" parent="Roads_Node/roads" index="12" unique_id=973387037]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="simple-no-marking-roads" parent="Roads_Node/roads" index="13" unique_id=72341327]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="city_roads-intersections" parent="Roads_Node/roads" index="14" unique_id=1085943378]
+surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[editable path="Roads_Node/roads"]

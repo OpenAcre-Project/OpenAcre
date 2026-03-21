@@ -1,23 +1,57 @@
 site_name: Open Farm Documentation
 site_url: ""
 nav:
-  - Overview: index.md
+  - Home: index.md
   - Architecture:
-      - Core Runtime: core_runtime.md
-      - Chunk System: chunk_system.md
-      - Developer Console: developer_console.md
-      - Vehicle Physics: vehicles.md
+      - Overview: architecture/overview.md
+      - Core Runtime: architecture/core_runtime.md
+      - UI Architecture: architecture/ui_architecture.md
+      - Map Fields: architecture/map_fields_architecture.md
   - Systems:
-      - Terrain3D Rendering: terrain3d_rendering.md
+      - Vehicles: systems/vehicles.md
+      - Camera: systems/camera.md
+      - Items & Inventory: systems/items_and_inventory.md
+      - Day/Night Cycle: systems/day_night_cycle.md
+  - Visualization:
+      - Terrain3D: rendering/terrain3d_rendering.md
+      - Chunk System: rendering/chunk_system.md
+  - Developer:
+      - Console: dev/developer_console.md
+      - Addon Patches: dev/addon_patches.md
 theme:
   name: material
+  language: en
   palette:
     scheme: slate
     primary: deep orange
     accent: deep orange
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
 markdown_extensions:
   - admonition
   - pymdownx.details
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.emoji:
+      emoji_index: !!python/name:pymdownx.emoji.twemoji
+      emoji_generator: !!python/name:pymdownx.emoji.to_svg
+  - pymdownx.tasklist:
+      custom_checkbox: true
   - toc:
       permalink: true
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js

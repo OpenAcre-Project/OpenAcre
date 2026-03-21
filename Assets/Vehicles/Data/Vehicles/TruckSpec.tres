@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="VehicleSpec" format=3 uid="uid://bvtuvknq8k0fc"]
+
+[ext_resource type="Script" uid="uid://bdeb0jxqvmi3h" path="res://Scripts/simulation/resources/VehicleSpec.gd" id="1_spec_gd"]
+[ext_resource type="PackedScene" uid="uid://8s46ope2b1lg" path="res://Scenes/Vehicles/Truck.tscn" id="2_truck_scene"]
+
+[resource]
+script = ExtResource("1_spec_gd")
+spec_id = &"truck"
+display_name = "Truck"
+brand = "Antigravity"
+vehicle_scene = ExtResource("2_truck_scene")

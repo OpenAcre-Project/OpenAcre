@@ -17,12 +17,9 @@ config/icon="res://icon.svg"
 
 [autoload]
 
-MapManager="*res://Scripts/core/MapManager.gd"
-TimeManager="*res://Singletons/TimeManager.gd"
-FarmData="*res://Singletons/FarmData.gd"
-SimulationCore="*res://Singletons/SimulationCore.gd"
-GameLog="*res://Singletons/GameLog.gd"
-GameInput="*res://Singletons/GameInput.gd"
+GameManager="*res://Singletons/GameManager.gd"
+EventBus="*res://Singletons/EventBus.gd"
+ItemRegistry="*res://Scripts/simulation/ItemRegistry.gd"
 
 [debug]
 

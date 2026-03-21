@@ -19,6 +19,25 @@ func try_interact(player: Node3D) -> bool:
 
 	return false
 
+func process_hover(player: CharacterBody3D) -> void:
+	if EventBus == null:
+		return
+
+	var hit := _raycast_from_screen_center(player)
+	if hit.is_empty():
+		EventBus.update_crosshair_prompt.emit("")
+		return
+
+	var obj: Variant = hit.get("collider")
+	if obj != null and obj.has_method("interact"):
+		var interact_key: String = GameInput.get_action_binding_text(GameInput.ACTION_INTERACT)
+		var prompt: String = "Interact [%s]" % interact_key
+		if obj.has_method("get_interaction_prompt"):
+			prompt = obj.get_interaction_prompt()
+		EventBus.update_crosshair_prompt.emit(prompt)
+	else:
+		EventBus.update_crosshair_prompt.emit("")
+
 func try_use_tool(player: CharacterBody3D, tool: Tool) -> bool:
 	if tool == null:
 		return false

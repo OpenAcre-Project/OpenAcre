@@ -1,7 +1,7 @@
 extends CanvasLayer
 
 @export var start_open: bool = false
-@export var max_history_lines: int = 220
+@export var max_history_lines: int = 1000
 @export var spawn_distance_from_player: float = 6.0
 @export var default_spawn_count: int = 1
 
@@ -13,20 +13,35 @@ var _history_cursor: int = 0
 var _spawn_registry: Dictionary = {}
 var _was_mouse_captured_before_open := false
 
+class CommandDef:
+	var cmd_name: String
+	var description: String
+	var usage: String
+	var method: String
+	var aliases: Array[String]
+
+	func _init(n: String, d: String, u: String, m: String, a: Array[String] = []) -> void:
+		cmd_name = n
+		description = d
+		usage = u
+		method = m
+		aliases = a
+
+var _commands: Array[CommandDef] = []
+var _command_map: Dictionary = {}
+
 func _ready() -> void:
 	# Console survives game crashes — always processes even if scene tree pauses
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	add_to_group("developer_console")
 	_build_ui()
 	_build_spawn_registry()
+	_register_all_commands()
 	_set_console_visible(start_open)
 	_print_line("Developer console ready. Type 'help'.")
 
 	# Subscribe to the centralized game log
-	if Engine.has_singleton("GameLog") or has_node("/root/GameLog"):
-		var game_log: Node = get_node_or_null("/root/GameLog")
-		if game_log != null and game_log.has_signal("log_message"):
-			game_log.connect("log_message", Callable(self, "_on_game_log_message"))
+	EventBus.log_message.connect(Callable(self , "_on_game_log_message"))
 
 func _on_game_log_message(text: String, level: int) -> void:
 	# 0 = INFO, 1 = WARN, 2 = ERROR
@@ -37,6 +52,28 @@ func _on_game_log_message(text: String, level: int) -> void:
 			_print_line("[color=red][ERROR] %s[/color]" % text)
 		_:
 			_print_line(text)
+
+func _register_all_commands() -> void:
+	_register_command("help", "Show this help message", "help", "_cmd_help")
+	_register_command("clear", "Clear the console output", "clear", "_cmd_clear")
+	_register_command("copy", "Copy log to clipboard", "copy", "_cmd_copy")
+	_register_command("time", "Manage time (e.g. time now, time set)", "time now | time set <d> <h> <m>", "_cmd_time")
+	_register_command("fastforward", "Fast forward time (e.g. ff 6h, ff 2d)", "ff <value>[m|h|d]", "_cmd_fast_forward", ["ff"])
+	_register_command("spawn", "Spawn a vehicle or alias", "spawn list | spawn <brand|alias|spec> [count]", "_cmd_spawn", ["s"])
+	_register_command("spawn_scene", "Spawn a specific .tscn file directly", "spawn_scene <res://...tscn> [count]", "_cmd_spawn_scene")
+	_register_command("sim", "Manage simulation (e.g. catchup)", "sim catchup <seconds>", "_cmd_sim")
+	_register_command("chunks", "Toggle chunk grid overlay or show chunks info", "chunks | chunks info", "_cmd_chunks")
+	_register_command("farmable", "Toggle farmable grid overlay", "farmable", "_cmd_farmable")
+	_register_command("godmode", "Toggle player noclip free-fly mode", "godmode", "_cmd_godmode", ["fly"])
+	_register_command("inventory", "List all items currently in player pockets", "inv", "_cmd_inventory", ["inv"])
+	_register_command("keybinds", "List all game keybinds", "keybinds", "_cmd_keybinds")
+
+func _register_command(cmd_name: String, desc: String, usage: String, method: String, aliases: Array[String] = []) -> void:
+	var cmd := CommandDef.new(cmd_name, desc, usage, method, aliases)
+	_commands.append(cmd)
+	_command_map[cmd_name] = cmd
+	for alias: String in aliases:
+		_command_map[alias] = cmd
 
 func _input(event: InputEvent) -> void:
 	if GameInput.is_console_toggle_event(event):
@@ -138,54 +175,36 @@ func _execute_command(command: String) -> void:
 		return
 
 	var verb := parts[0].to_lower()
-	match verb:
-		"help":
-			_cmd_help()
-		"clear":
-			_cmd_clear()
-		"copy":
-			_cmd_copy()
-		"time":
-			_cmd_time(parts)
-		"ff", "fastforward":
-			_cmd_fast_forward(parts)
-		"spawn":
-			_cmd_spawn(parts)
-		"spawn_scene":
-			_cmd_spawn_scene(parts)
-		"sim":
-			_cmd_sim(parts)
-		"chunks":
-			_cmd_chunks(parts)
-		"farmable":
-			_cmd_farmable(parts)
-		"godmode", "fly":
-			_cmd_godmode(parts)
-		_:
-			_print_line("Unknown command: %s" % verb)
+	if _command_map.has(verb):
+		var cmd: CommandDef = _command_map[verb]
+		call(cmd.method, parts)
+	else:
+		_print_line("Unknown command: %s" % verb)
 
-func _cmd_help() -> void:
-	_print_line("Commands:")
-	_print_line("  help")
-	_print_line("  clear")
-	_print_line("  copy                              (copy log to clipboard)")
-	_print_line("  time now")
-	_print_line("  time set <day> <hour> <minute>")
-	_print_line("  ff <value>[m|h|d]  (example: ff 6h, ff 2d)")
-	_print_line("  spawn list")
-	_print_line("  spawn <vehicleBrand|alias> [count]")
-	_print_line("  spawn_scene <res://...tscn> [count]")
-	_print_line("  sim catchup <seconds>")
-	_print_line("  chunks                            (toggle chunk grid overlay)")
-	_print_line("  chunks info                       (print chunk loading stats)")
-	_print_line("  farmable                          (toggle farmable grid overlay)")
-	_print_line("  godmode / fly                     (toggle player noclip free-fly)")
+func _cmd_help(_parts: Array[String] = []) -> void:
+	_print_line("[color=white]========================================[/color]")
+	_print_line("[color=cyan]DEVELOPER CONSOLE COMMANDS[/color]")
+	_print_line("[color=white]========================================[/color]")
+	for cmd: CommandDef in _commands:
+		var name_str := cmd.cmd_name
+		if not cmd.aliases.is_empty():
+			name_str += " (" + ", ".join(cmd.aliases) + ")"
+		
+		var spaces := 20 - name_str.length()
+		var padding := ""
+		for i in range(maxi(1, spaces)):
+			padding += " "
+		
+		_print_line("[color=yellow]%s[/color]%s- %s" % [name_str, padding, cmd.description])
+		if cmd.usage != cmd.cmd_name:
+			_print_line("  [color=gray]Usage: %s[/color]" % cmd.usage)
+	_print_line("[color=white]========================================[/color]")
 
-func _cmd_clear() -> void:
+func _cmd_clear(_parts: Array[String] = []) -> void:
 	if _log != null:
 		_log.clear()
 
-func _cmd_copy() -> void:
+func _cmd_copy(_parts: Array[String] = []) -> void:
 	if _log == null:
 		return
 	var text := _log.get_parsed_text()
@@ -199,7 +218,7 @@ func _cmd_time(parts: Array[String]) -> void:
 
 	var sub := parts[1].to_lower()
 	if sub == "now":
-		_print_line("Day %d %02d:%02d" % [TimeManager.current_day, TimeManager.current_hour, TimeManager.current_minute])
+		_print_line("Day %d %02d:%02d" % [GameManager.session.time.current_day, GameManager.session.time.current_hour, GameManager.session.time.current_minute])
 		return
 
 	if sub == "set":
@@ -209,9 +228,9 @@ func _cmd_time(parts: Array[String]) -> void:
 		var day := int(parts[2])
 		var hour := int(parts[3])
 		var minute := int(parts[4])
-		TimeManager.set_time(day, hour, minute)
-		FarmData.simulate_passage_of_time(0)
-		_print_line("Time set to Day %d %02d:%02d" % [TimeManager.current_day, TimeManager.current_hour, TimeManager.current_minute])
+		GameManager.session.time.set_time(day, hour, minute)
+		GameManager.session.farm.simulate_passage_of_time(0)
+		_print_line("Time set to Day %d %02d:%02d" % [GameManager.session.time.current_day, GameManager.session.time.current_hour, GameManager.session.time.current_minute])
 		return
 
 	_print_line("Usage: time now | time set <day> <hour> <minute>")
@@ -226,13 +245,13 @@ func _cmd_fast_forward(parts: Array[String]) -> void:
 		_print_line("Invalid duration. Use formats like 30m, 6h, 2d")
 		return
 
-	var result: Dictionary = TimeManager.fast_forward_minutes(minutes, false)
-	FarmData.simulate_passage_of_time(minutes * 60, true)
+	var result: Dictionary = GameManager.session.time.fast_forward_minutes(minutes, false)
+	GameManager.session.farm.simulate_passage_of_time(minutes * 60, true)
 	_print_line("Fast-forwarded %d minutes. Now Day %d %02d:%02d" % [
 		int(result.get("advanced_minutes", 0)),
-		TimeManager.current_day,
-		TimeManager.current_hour,
-		TimeManager.current_minute
+		GameManager.session.time.current_day,
+		GameManager.session.time.current_hour,
+		GameManager.session.time.current_minute
 	])
 
 func _cmd_spawn(parts: Array[String]) -> void:
@@ -245,15 +264,25 @@ func _cmd_spawn(parts: Array[String]) -> void:
 		aliases.sort()
 		_print_line("Spawn aliases: " + ", ".join(aliases))
 		var manager := _get_vehicle_manager()
-		if manager != null and manager.has_method("get_spawnable_brands"):
-			var brands_any: Variant = manager.call("get_spawnable_brands")
-			if brands_any is Array and not (brands_any as Array).is_empty():
-				var brand_names: Array[String] = []
-				for item: Variant in brands_any:
-					if item is String:
-						brand_names.append(item)
-				brand_names.sort()
-				_print_line("Vehicle brands: " + ", ".join(brand_names))
+		if manager != null:
+			if manager.has_method("get_spawnable_brands"):
+				var brands_any: Variant = manager.call("get_spawnable_brands")
+				if brands_any is Array and not (brands_any as Array).is_empty():
+					var brand_names: Array[String] = []
+					for item: Variant in brands_any:
+						if item is String:
+							brand_names.append(item)
+					brand_names.sort()
+					_print_line("Vehicle brands: " + ", ".join(brand_names))
+			if manager.has_method("get_spawnable_spec_ids"):
+				var specs_any: Variant = manager.call("get_spawnable_spec_ids")
+				if specs_any is Array and not (specs_any as Array).is_empty():
+					var spec_names: Array[String] = []
+					for item: Variant in specs_any:
+						if item is StringName or item is String:
+							spec_names.append(String(item))
+					spec_names.sort()
+					_print_line("Vehicle specs: " + ", ".join(spec_names))
 		return
 
 	var alias := parts[1].to_lower()
@@ -292,7 +321,7 @@ func _cmd_sim(parts: Array[String]) -> void:
 		return
 
 	var seconds := maxi(0, int(parts[2]))
-	FarmData.simulate_passage_of_time(seconds, true)
+	GameManager.session.farm.simulate_passage_of_time(seconds, true)
 	_print_line("Applied simulation catch-up for %d seconds." % seconds)
 
 func _cmd_chunks(parts: Array[String]) -> void:
@@ -324,6 +353,40 @@ func _cmd_godmode(_parts: Array[String]) -> void:
 	var is_enabled: bool = player.toggle_godmode()
 	_print_line("Godmode (Noclip Fly): %s" % ("ON" if is_enabled else "OFF"))
 
+func _cmd_inventory(_parts: Array[String] = []) -> void:
+	var player_data := GameManager.session.entities.get_player(&"player.main")
+	if not player_data:
+		_print_line("Player data not found.")
+		return
+		
+	var pockets: InventoryData = player_data.pockets
+	if pockets.items.is_empty():
+		_print_line("Inventory is empty.")
+		return
+		
+	_print_line("--- Player Inventory ---")
+	for i in range(pockets.items.size()):
+		var item: ItemInstance = pockets.items[i]
+		_print_line("[%d] %s x%d" % [i, item.definition_id, item.stack])
+	_print_line("Total Mass: %.2f / %.2f kg" % [pockets.get_current_mass(), pockets.max_mass])
+
+func _cmd_keybinds(_parts: Array[String] = []) -> void:
+	_print_line("--- Keybindings ---")
+	_print_line("Interact: " + GameInput.get_action_binding_text(GameInput.ACTION_INTERACT))
+	_print_line("Toggle UI: " + GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_UI))
+	_print_line("Toggle Help: " + GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_HELP))
+	_print_line("Toggle Debug Overlay: " + GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_DEBUG))
+	_print_line("Toggle Developer Console: " + GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_CONSOLE))
+	_print_line("Camera Up: " + GameInput.get_action_binding_text(GameInput.ACTION_CAMERA_UP))
+	_print_line("Camera Down: " + GameInput.get_action_binding_text(GameInput.ACTION_CAMERA_DOWN))
+	_print_line("Camera Zoom In: " + GameInput.get_action_binding_text(GameInput.ACTION_CAMERA_ZOOM_IN))
+	_print_line("Camera Zoom Out: " + GameInput.get_action_binding_text(GameInput.ACTION_CAMERA_ZOOM_OUT))
+	_print_line("Vehicle Throttle: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_THROTTLE))
+	_print_line("Vehicle Reverse: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_REVERSE))
+	_print_line("Vehicle Steer Left: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_STEER_LEFT))
+	_print_line("Vehicle Steer Right: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_STEER_RIGHT))
+	_print_line("Vehicle Brake: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_BRAKE))
+
 func _print_chunks_info() -> void:
 	var grid_mgr := _get_grid_manager()
 	var loaded_visual := 0
@@ -336,12 +399,12 @@ func _print_chunks_info() -> void:
 			center = grid_mgr.get_stream_center_chunk()
 		if grid_mgr.has_method("get_stream_radius"):
 			radius = grid_mgr.get_stream_radius()
-	var total_data := FarmData.get_total_chunk_count()
-	var loaded_sim := FarmData.get_loaded_chunk_count()
-	var unloaded_sim := FarmData.get_unloaded_chunk_count()
+	var total_data := GameManager.session.farm.get_total_chunk_count()
+	var loaded_sim := GameManager.session.farm.get_loaded_chunk_count()
+	var unloaded_sim := GameManager.session.farm.get_unloaded_chunk_count()
 	_print_line("Visual: %d chunks loaded (radius %d, center %d,%d)" % [loaded_visual, radius, center.x, center.y])
 	_print_line("FarmData: %d total data chunks | %d sim-loaded | %d sim-unloaded" % [total_data, loaded_sim, unloaded_sim])
-	_print_line("Chunk size: %d tiles" % FarmData.simulation_chunk_size_tiles)
+	_print_line("Chunk size: %d tiles" % GameManager.session.farm.simulation_chunk_size_tiles)
 
 func _get_grid_manager() -> Node:
 	return get_tree().get_first_node_in_group("grid_manager")
@@ -391,8 +454,8 @@ func _spawn_by_scene_path(scene_path: String, count: int) -> void:
 			# Set position BEFORE adding to tree so that _ready(), SimulationCore registration,
 			# and GEVP physics wheels initialize using the correct spawn position.
 			var spawn_pos := _compute_spawn_position(origin, i)
-			# Since instance is not in tree yet, setting global_position works on its local transform.
-			(instance as Node3D).global_position = spawn_pos
+			# Since instance is not in tree yet, setting position works identically
+			(instance as Node3D).position = spawn_pos
 		parent.add_child(instance)
 		spawned += 1
 
@@ -437,44 +500,55 @@ func _snap_spawn_to_ground(origin: Vector3) -> Vector3:
 
 func _build_spawn_registry() -> void:
 	_spawn_registry.clear()
-	_register_default_spawn_alias("apple", "res://Scenes/Apple.tscn")
-	_register_default_spawn_alias("tractor", "res://Scenes/Tractor.tscn")
-	_register_default_spawn_alias("testboxvehicle", "res://Scenes/TestBoxVehicle.tscn")
-	_register_default_spawn_alias("plow_attachment", "res://Scenes/PlowAttachment.tscn")
-	_register_default_spawn_alias("player", "res://Scenes/Player.tscn")
+	_register_default_spawn_alias("apple", "res://Scenes/Interactables/Apple.tscn")
+	_register_default_spawn_alias("plow_attachment", "res://Scenes/Vehicles/Attachments/PlowAttachment.tscn")
+	_register_default_spawn_alias("player", "res://Scenes/Actors/Player.tscn")
 
-	var dir := DirAccess.open("res://Scenes")
+	_scan_scenes_recursive("res://Scenes")
+
+func _scan_scenes_recursive(path: String) -> void:
+	var dir := DirAccess.open(path)
 	if dir == null:
 		return
 
 	dir.list_dir_begin()
 	var file_name := dir.get_next()
 	while file_name != "":
-		if not dir.current_is_dir() and file_name.to_lower().ends_with(".tscn"):
+		if dir.current_is_dir():
+			if not file_name.begins_with("."):
+				_scan_scenes_recursive(path.path_join(file_name))
+		elif file_name.to_lower().ends_with(".tscn"):
 			var alias := file_name.trim_suffix(".tscn").to_lower()
-			var scene_path := "res://Scenes/" + file_name
+			var scene_path := path.path_join(file_name)
 			if not _spawn_registry.has(alias):
 				_spawn_registry[alias] = scene_path
 		file_name = dir.get_next()
 	dir.list_dir_end()
 
-func _spawn_vehicle_brand(brand: String, count: int) -> bool:
+func _spawn_vehicle_brand(alias: String, count: int) -> bool:
 	var manager := _get_vehicle_manager()
-	if manager == null or not manager.has_method("spawn_vehicle_by_brand"):
+	if manager == null:
 		return false
 
 	var origin := _get_spawn_origin()
 	var spawned := 0
 	for i in range(count):
 		var spawn_pos := _compute_spawn_position(origin, i)
-		var vehicle_id_any: Variant = manager.call("spawn_vehicle_by_brand", brand, spawn_pos, 0.0)
-		if vehicle_id_any is StringName and vehicle_id_any != &"":
-			spawned += 1
-		elif vehicle_id_any is String and not String(vehicle_id_any).is_empty():
+		var vehicle_id_any: Variant = &""
+		
+		# Try brand first
+		if manager.has_method("spawn_vehicle_by_brand"):
+			vehicle_id_any = manager.call("spawn_vehicle_by_brand", alias, spawn_pos, 0.0)
+		
+		# Fallback to spec_id if brand failed
+		if (vehicle_id_any == null or String(vehicle_id_any).is_empty()) and manager.has_method("spawn_vehicle_by_spec"):
+			vehicle_id_any = manager.call("spawn_vehicle_by_spec", StringName(alias), spawn_pos, 0.0)
+
+		if (vehicle_id_any is StringName and vehicle_id_any != &"") or (vehicle_id_any is String and not String(vehicle_id_any).is_empty()):
 			spawned += 1
 
 	if spawned > 0:
-		_print_line("Spawned %d x vehicle brand '%s'" % [spawned, brand])
+		_print_line("Spawned %d x vehicle '%s'" % [spawned, alias])
 		return true
 
 	return false

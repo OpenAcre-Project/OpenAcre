@@ -1,0 +1,18 @@
+[gd_scene load_steps=2 format=3 uid="uid://cx6t4s"]
+
+[ext_resource type="Script" path="res://Scenes/UI/ToolUI.gd" id="1_x"]
+
+[node name="ToolUI" type="PanelContainer"]
+script = ExtResource("1_x")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 8
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 8
+
+[node name="ToolLabel" type="Label" parent="Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Equipped: None"

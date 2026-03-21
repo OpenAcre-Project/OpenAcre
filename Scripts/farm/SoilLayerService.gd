@@ -10,12 +10,13 @@ var _terrain: Node = null
 var _terrain_api: Object = null # Points to Terrain3DData / Terrain3DStorage
 var _runtime_paint_ready := false
 var _runtime_paint_reason := "Not initialized"
+var _batch_painting := false
 
 func _ready() -> void:
 	add_to_group("soil_layer_service")
 	
-	if not FarmData.is_connected("tile_updated", Callable(self, "_on_tile_updated")):
-		FarmData.connect("tile_updated", Callable(self, "_on_tile_updated"))
+	if not GameManager.session.farm.is_connected("tile_updated", Callable(self, "_on_tile_updated")):
+		GameManager.session.farm.connect("tile_updated", Callable(self, "_on_tile_updated"))
 		
 	# Defer initialization until the end of the frame so MapDefinition._ready() has finished finding and grouping the terrain!
 	call_deferred("_initialize_terrain")
@@ -58,22 +59,22 @@ func get_runtime_paint_reason() -> String:
 
 # Called by PlowAttachment.gd
 func plow_world(world_pos: Vector3) -> bool:
-	var grid_pos := FarmData.world_to_grid(world_pos)
-	var tile_data = FarmData.get_tile_data(grid_pos)
+	var grid_pos := GameManager.session.farm.world_to_grid(world_pos)
+	var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
 
 	if tile_data.state == FarmData.SoilState.GRASS:
 		# Modifies logical grid, emits "tile_updated", which triggers the visual paint below
-		FarmData.set_tile_state(grid_pos, FarmData.SoilState.PLOWED, world_pos.y)
+		GameManager.session.farm.set_tile_state(grid_pos, FarmData.SoilState.PLOWED, world_pos.y)
 		return true
 	return false
 
 # Called by SeedTool.gd
 func seed_world(world_pos: Vector3) -> bool:
-	var grid_pos := FarmData.world_to_grid(world_pos)
-	var tile_data = FarmData.get_tile_data(grid_pos)
+	var grid_pos := GameManager.session.farm.world_to_grid(world_pos)
+	var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
 
 	if tile_data.state == FarmData.SoilState.PLOWED:
-		return FarmData.plant_crop(grid_pos, &"generic", FarmData.DEFAULT_CROP_GROWTH_MINUTES, world_pos.y)
+		return GameManager.session.farm.plant_crop(grid_pos, &"generic", GameManager.session.farm.DEFAULT_CROP_GROWTH_MINUTES, world_pos.y)
 	return false
 
 func _on_tile_updated(grid_pos: Vector2i, new_state: int) -> void:
@@ -111,9 +112,9 @@ func _paint_control_data(world_center: Vector3, radius_meters: float, target_ove
 			if _modify_single_pixel(sample_pos, target_overlay_id, distance_ratio):
 				dirty = true
 				
-	if dirty:
+	if dirty and not _batch_painting:
 		# Map types: 0=height, 1=control, 2=color
-		var map_type_control = 1
+		var map_type_control: int = 1
 		
 		if _terrain_api.has_method("update_maps"):
 			_terrain_api.update_maps(map_type_control)
@@ -121,10 +122,10 @@ func _paint_control_data(world_center: Vector3, radius_meters: float, target_ove
 			_terrain_api.force_update_maps(map_type_control)
 
 
-func _modify_single_pixel(world_pos: Vector3, target_overlay_id: int, distance_ratio: float) -> bool:
+func _modify_single_pixel(world_pos: Vector3, target_overlay_id: int, _distance_ratio: float) -> bool:
 	# Terrain3D helpers take the global world_pos (Vector3), not the integer control value!
-	var overlay_id = _terrain_api.get_control_overlay_id(world_pos)
-	var blend = _terrain_api.get_control_blend(world_pos)
+	var overlay_id: int = _terrain_api.get_control_overlay_id(world_pos)
+	var blend: int = _terrain_api.get_control_blend(world_pos)
 
 	var changed := false
 
@@ -154,12 +155,24 @@ func rebuild_visuals_from_data() -> void:
 	if not _runtime_paint_ready:
 		return
 
-	GameLog.info("[SoilLayerService] Rebuilding visuals from FarmData...")
-	for chunk_pos_any: Variant in FarmData._tiles_by_chunk.keys():
+	GameLog.info("[SoilLayerService] Rebuilding visuals from GameManager.session.farm...")
+	
+	_batch_painting = true
+
+	for chunk_pos_any: Variant in GameManager.session.farm._tiles_by_chunk.keys():
 		var chunk_pos: Vector2i = chunk_pos_any
-		var tiles: Array[Vector2i] = FarmData.get_chunk_tiles(chunk_pos)
+		var tiles: Array[Vector2i] = GameManager.session.farm.get_chunk_tiles(chunk_pos)
 		for grid_pos: Vector2i in tiles:
-			var tile_data: FarmTileData = FarmData.get_tile_data(grid_pos)
+			var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
 			_on_tile_updated(grid_pos, tile_data.state)
+
+	_batch_painting = false
+	
+	# Manually update maps once after all batch updates
+	var map_type_control: int = 1
+	if _terrain_api.has_method("update_maps"):
+		_terrain_api.update_maps(map_type_control)
+	elif _terrain_api.has_method("force_update_maps"):
+		_terrain_api.force_update_maps(map_type_control)
 
 	GameLog.info("[SoilLayerService] Rebuilt terrain visuals from save data.")

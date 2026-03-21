@@ -33,7 +33,7 @@ func _ready() -> void:
 	_camera_target_distance = spring_arm.spring_length
 	camera.current = false # Let the player camera be active by default
 	_sync_from_simulation_core()
-	SimulationCore.set_vehicle_stats(_resolved_simulation_vehicle_id, initial_fuel_level, initial_engine_temp_celsius)
+	GameManager.session.entities.set_vehicle_stats(_resolved_simulation_vehicle_id, initial_fuel_level, initial_engine_temp_celsius)
 	_publish_vehicle_state_to_simulation_core()
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -95,6 +95,9 @@ func interact(player: Node3D) -> void:
 		GameLog.info("TestBoxVehicle Interacted!")
 		enter_vehicle(player)
 
+func get_interaction_prompt() -> String:
+	return "Drive Box Vehicle [%s]" % GameInput.get_action_binding_text(GameInput.ACTION_INTERACT)
+
 func enter_vehicle(player: Node3D) -> void:
 	set_driven_state(true)
 	can_exit = false
@@ -102,7 +105,7 @@ func enter_vehicle(player: Node3D) -> void:
 
 	if driver_player is CharacterBody3D:
 		VehicleSeatControllerRef.enter_vehicle(driver_player, camera)
-		SimulationCore.set_player_active_vehicle(_get_driver_player_id(), _resolved_simulation_vehicle_id)
+		GameManager.session.entities.set_player_active_vehicle(_get_driver_player_id(), _resolved_simulation_vehicle_id)
 	GameLog.info("Entered TestBoxVehicle")
 
 	await get_tree().create_timer(0.4).timeout
@@ -115,14 +118,14 @@ func exit_vehicle() -> void:
 	
 	if driver_player:
 		if driver_player is CharacterBody3D:
-			SimulationCore.set_player_active_vehicle(_get_driver_player_id(), &"")
+			GameManager.session.entities.set_player_active_vehicle(_get_driver_player_id(), &"")
 			VehicleSeatControllerRef.exit_vehicle(driver_player, exit_point)
 		driver_player = null
 		
 		await get_tree().create_timer(0.1).timeout
 
 func _sync_from_simulation_core() -> void:
-	var vehicle_data := SimulationCore.get_vehicle(_resolved_simulation_vehicle_id)
+	var vehicle_data := GameManager.session.entities.get_vehicle(_resolved_simulation_vehicle_id)
 	if not vehicle_data.has_world_transform:
 		return
 
@@ -134,7 +137,7 @@ func _publish_vehicle_state_to_simulation_core() -> void:
 	if is_driven:
 		occupant_player_id = _get_driver_player_id()
 
-	SimulationCore.set_vehicle_state(
+	GameManager.session.entities.set_vehicle_state(
 		_resolved_simulation_vehicle_id,
 		global_position,
 		rotation.y,

@@ -1,3 +1,8 @@
+## [Manager] The central controller for vehicle "streaming" and spawning.
+## This class handles:
+## - Monitoring player proximity to logical vehicles
+## - Spawning/Despawning 3D [Vehicle3D] instances based on render radius
+## - Synchronizing persistent simulation data to physical world nodes
 extends Node3D
 
 @export var vehicle_catalog: VehicleCatalog
@@ -36,7 +41,7 @@ func _refresh_streamed_vehicles(force_refresh: bool = false) -> void:
 		return
 
 	var center := _stream_target.global_position
-	var nearby_vehicle_ids := SimulationCore.get_nearby_vehicle_ids(center, load_radius)
+	var nearby_vehicle_ids := GameManager.session.entities.get_nearby_vehicle_ids(center, load_radius)
 	var desired: Dictionary = {}
 	for vehicle_id: StringName in nearby_vehicle_ids:
 		desired[vehicle_id] = true
@@ -52,7 +57,7 @@ func _refresh_streamed_vehicles(force_refresh: bool = false) -> void:
 		if desired.has(vehicle_id):
 			continue
 
-		var vehicle_data := SimulationCore.get_vehicle(vehicle_id)
+		var vehicle_data := GameManager.session.entities.get_vehicle(vehicle_id)
 		var distance_sq := vehicle_data.world_position.distance_squared_to(center)
 		if distance_sq > unload_radius * unload_radius:
 			_despawn_vehicle(vehicle_id)
@@ -63,7 +68,7 @@ func _spawn_vehicle(vehicle_id: StringName) -> void:
 		_failed_spawn_ids[vehicle_id] = true
 		return
 
-	var vehicle_data := SimulationCore.get_vehicle(vehicle_id)
+	var vehicle_data := GameManager.session.entities.get_vehicle(vehicle_id)
 	var spec := vehicle_catalog.get_spec(vehicle_data.spec_id)
 	if spec == null:
 		GameLog.warn("Missing VehicleSpec for id: %s (vehicle: %s)" % [String(vehicle_data.spec_id), String(vehicle_id)])
@@ -95,6 +100,9 @@ func _spawn_vehicle(vehicle_id: StringName) -> void:
 	add_child(instance)
 	_spawned_vehicles[vehicle_id] = instance
 
+func adopt_vehicle(vehicle_id: StringName, instance: Node) -> void:
+	_spawned_vehicles[vehicle_id] = instance
+
 func _despawn_vehicle(vehicle_id: StringName) -> void:
 	if not _spawned_vehicles.has(vehicle_id):
 		return
@@ -116,7 +124,7 @@ func _sync_spawned_vehicle_transform(vehicle_id: StringName) -> void:
 	if not (instance is Node3D):
 		return
 
-	var vehicle_data := SimulationCore.get_vehicle(vehicle_id)
+	var vehicle_data := GameManager.session.entities.get_vehicle(vehicle_id)
 	
 	if instance.has_method("teleport"):
 		instance.call("teleport", vehicle_data.world_position, vehicle_data.world_yaw_radians)
@@ -140,6 +148,11 @@ func get_spawnable_brands() -> Array[String]:
 		return []
 	return vehicle_catalog.get_brand_names()
 
+func get_spawnable_spec_ids() -> Array[StringName]:
+	if vehicle_catalog == null:
+		return []
+	return vehicle_catalog.get_spec_ids()
+
 func spawn_vehicle_by_brand(brand: String, world_position: Vector3, world_yaw_radians: float = 0.0) -> StringName:
 	if vehicle_catalog == null:
 		return &""
@@ -150,7 +163,20 @@ func spawn_vehicle_by_brand(brand: String, world_position: Vector3, world_yaw_ra
 
 	var spec := specs[0]
 	var vehicle_id := _generate_runtime_vehicle_id(brand)
-	SimulationCore.register_vehicle(vehicle_id, spec.spec_id, world_position, world_yaw_radians, 100.0, 100.0)
+	GameManager.session.entities.register_vehicle(vehicle_id, spec.spec_id, world_position, world_yaw_radians, 100.0, 100.0)
+	_spawn_vehicle(vehicle_id)
+	return vehicle_id
+
+func spawn_vehicle_by_spec(spec_id: StringName, world_position: Vector3, world_yaw_radians: float = 0.0) -> StringName:
+	if vehicle_catalog == null:
+		return &""
+
+	var spec := vehicle_catalog.get_spec(spec_id)
+	if spec == null:
+		return &""
+
+	var vehicle_id := _generate_runtime_vehicle_id(String(spec.spec_id))
+	GameManager.session.entities.register_vehicle(vehicle_id, spec.spec_id, world_position, world_yaw_radians, 100.0, 100.0)
 	_spawn_vehicle(vehicle_id)
 	return vehicle_id
 

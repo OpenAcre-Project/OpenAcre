@@ -1,0 +1,28 @@
+[gd_scene format=3 uid="uid://c2jrylig6ynlj"]
+
+[ext_resource type="Script" uid="uid://cuesgw25fq0pv" path="res://Scripts/vehicles/PlowAttachment.gd" id="1_plow_gd"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plow"]
+size = Vector3(3, 0.5, 0.5)
+
+[sub_resource type="BoxMesh" id="BoxMesh_plow"]
+size = Vector3(3, 0.5, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plow_color"]
+albedo_color = Color(0.1, 0.4, 0.1, 1)
+
+[node name="PlowAttachment" type="RigidBody3D" unique_id=191783416]
+mass = 200.0
+script = ExtResource("1_plow_gd")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1038087730]
+shape = SubResource("BoxShape3D_plow")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=344549370]
+mesh = SubResource("BoxMesh_plow")
+surface_material_override/0 = SubResource("StandardMaterial3D_plow_color")
+
+[node name="DetectionArea" type="Area3D" parent="." unique_id=387554892]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea" unique_id=1337859789]
+shape = SubResource("BoxShape3D_plow")

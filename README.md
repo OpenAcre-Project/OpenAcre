@@ -1,5 +1,6 @@
 <!-- [![License](https://img.shields.io/badge/License-MIT-green)](https://gitlab.com/YouFoundJK/soap-gap-tip3p-water/-/blob/main/LICENSE) -->
-[![Docs](https://img.shields.io/badge/Documentation-v_1.0-blue)](https://soap-gap-tip3p-water-757ee2.gitlab.io/)
+[![Version](https://img.shields.io/badge/Version-v_1.1-green)](https://youfoundjk.gitlab.io/farm-simulator-godot/)
+[![Docs](https://img.shields.io/badge/Documentation-v_1.1-blue)](https://youfoundjk.gitlab.io/farm-simulator-godot/)
 
 
 # Project: OpenFarm Survival

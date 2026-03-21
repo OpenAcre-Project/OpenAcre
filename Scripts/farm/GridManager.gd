@@ -25,7 +25,7 @@ func _exit_tree() -> void:
 	if enable_chunk_streaming:
 		for chunk_pos_any: Variant in _currently_loaded_chunks.keys():
 			if chunk_pos_any is Vector2i:
-				FarmData.mark_chunk_unloaded(chunk_pos_any)
+				GameManager.session.farm.mark_chunk_unloaded(chunk_pos_any)
 		_currently_loaded_chunks.clear()
 
 func _process(delta: float) -> void:
@@ -50,7 +50,7 @@ func _update_streamed_chunks(force_refresh: bool = false) -> void:
 	if _stream_target == null:
 		return
 
-	var center_chunk := FarmData.world_to_chunk(_stream_target.global_position)
+	var center_chunk := GameManager.session.farm.world_to_chunk(_stream_target.global_position)
 	var desired_chunks: Dictionary = {}
 	for y in range(-streamed_chunk_radius, streamed_chunk_radius + 1):
 		for x in range(-streamed_chunk_radius, streamed_chunk_radius + 1):
@@ -61,18 +61,18 @@ func _update_streamed_chunks(force_refresh: bool = false) -> void:
 
 	for chunk_pos_any: Variant in desired_chunks.keys():
 		if chunk_pos_any is Vector2i and not _currently_loaded_chunks.has(chunk_pos_any):
-			FarmData.mark_chunk_loaded(chunk_pos_any, true)
+			GameManager.session.farm.mark_chunk_loaded(chunk_pos_any, true)
 
 	for chunk_pos_any: Variant in _currently_loaded_chunks.keys():
 		if chunk_pos_any is Vector2i and not desired_chunks.has(chunk_pos_any):
-			FarmData.mark_chunk_unloaded(chunk_pos_any)
+			GameManager.session.farm.mark_chunk_unloaded(chunk_pos_any)
 
 	var loaded_before := _currently_loaded_chunks.size()
 	_currently_loaded_chunks = desired_chunks
 	var loaded_after := _currently_loaded_chunks.size()
 
 	if loaded_before != loaded_after or force_refresh:
-		var total_data := FarmData.get_total_chunk_count()
+		var total_data := GameManager.session.farm.get_total_chunk_count()
 		GameLog.infof("Chunks streamed: %d loaded (radius %d) | %d data chunks | center (%d,%d)",
 			[loaded_after, streamed_chunk_radius, total_data, center_chunk.x, center_chunk.y])
 
@@ -95,7 +95,7 @@ func _chunk_sets_equal(left: Dictionary, right: Dictionary) -> bool:
 func get_stream_center_chunk() -> Vector2i:
 	if _stream_target == null or not is_instance_valid(_stream_target):
 		return Vector2i.ZERO
-	return FarmData.world_to_chunk(_stream_target.global_position)
+	return GameManager.session.farm.world_to_chunk(_stream_target.global_position)
 
 func get_loaded_chunk_count() -> int:
 	return _currently_loaded_chunks.size()
@@ -144,7 +144,7 @@ func _create_chunk_grid_overlay() -> void:
 	var overlay := Node3D.new()
 	overlay.name = "ChunkGridOverlay"
 	overlay.set_script(ChunkGridOverlayRef)
-	overlay.chunk_size_meters = FarmData.simulation_chunk_size_tiles
+	overlay.chunk_size_meters = GameManager.session.farm.simulation_chunk_size_tiles
 	overlay.grid_draw_radius = streamed_chunk_radius
 	overlay.visible = false
 	add_child(overlay)
@@ -154,7 +154,7 @@ func _create_farmable_grid_overlay() -> void:
 	var overlay := Node3D.new()
 	overlay.name = "FarmableGridOverlay"
 	overlay.set_script(FarmableGridOverlayRef)
-	overlay.chunk_size_meters = FarmData.simulation_chunk_size_tiles
+	overlay.chunk_size_meters = GameManager.session.farm.simulation_chunk_size_tiles
 	overlay.draw_radius_chunks = 1
 	overlay.visible = false
 	add_child(overlay)

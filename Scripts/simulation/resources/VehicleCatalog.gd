@@ -1,3 +1,8 @@
+## [Registry] The central manifest of all spawnable vehicles.
+## This class handles:
+## - Looking up [VehicleSpec] data by unique spec_id
+## - Filtering vehicles by brand
+## - Providing lists for the developer console and spawning menus
 extends Resource
 class_name VehicleCatalog
 
@@ -35,3 +40,12 @@ func get_brand_names() -> Array[String]:
 			names.append(key_any)
 	names.sort()
 	return names
+
+func get_spec_ids() -> Array[StringName]:
+	var ids: Array[StringName] = []
+	for spec: VehicleSpec in specs:
+		if spec == null:
+			continue
+		if spec.spec_id != &"":
+			ids.append(spec.spec_id)
+	return ids

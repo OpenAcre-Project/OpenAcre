@@ -29,48 +29,48 @@ last_shadow_lod = 0
 lod0_range = 128.0
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_ebdvq"]
-name = ""
+name = "Grass"
 albedo_texture = ExtResource("1_ed4rd")
 normal_texture = ExtResource("2_eh32w")
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_q8u4s"]
-name = ""
+name = "Concrete"
 id = 1
 albedo_texture = ExtResource("13_dqcu4")
 normal_texture = ExtResource("14_f41p3")
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_s52mk"]
-name = ""
+name = "Rock"
 id = 2
 albedo_texture = ExtResource("5_qxoip")
 normal_texture = ExtResource("6_snqfh")
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_uk08s"]
-name = ""
+name = "Mud"
 id = 3
 albedo_texture = ExtResource("1_ebdvq")
 normal_texture = ExtResource("2_q8u4s")
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_3w1oi"]
-name = ""
+name = "Gravel"
 id = 4
 albedo_texture = ExtResource("9_heinc")
 normal_texture = ExtResource("10_7weji")
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_5t7k0"]
-name = ""
+name = "Forest"
 id = 5
 albedo_texture = ExtResource("11_5icrm")
 normal_texture = ExtResource("11_5icrm")
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_dqcu4"]
-name = ""
+name = "Plow"
 id = 6
 albedo_texture = ExtResource("13_dqcu4")
 normal_texture = ExtResource("14_f41p3")
 
 [sub_resource type="Terrain3DTextureAsset" id="Terrain3DTextureAsset_f41p3"]
-name = ""
+name = "Asphalt"
 id = 7
 albedo_texture = ExtResource("12_o7uno")
 normal_texture = ExtResource("13_iqvvf")

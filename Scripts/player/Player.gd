@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 @export var simulation_player_id: StringName = &"player.main"
+const OrbitCameraControllerRef = preload("res://Scripts/camera/OrbitCameraController.gd")
 @export var walk_speed: float = 5.0
 @export var sprint_speed: float = 8.0
 @export var jump_velocity: float = 4.5
@@ -33,10 +34,10 @@ extends CharacterBody3D
 @export var landing_roll_zero_velocity_window: float = 0.12
 @export var landing_roll_recover_time: float = 0.25
 @export var landing_roll_recover_walk_scale: float = 1.2
+@export var hover_ray_interval_frames: int = 10
 
 @onready var spring_arm: SpringArm3D = $SpringArm3D
 @onready var camera: Camera3D = $SpringArm3D/Camera3D
-@onready var ui_layer: CanvasLayer = preload("res://Scenes/PlayerUI.tscn").instantiate()
 @onready var hero_mesh: Node3D = $hero_male
 @onready var Anim_tree: AnimationTree = $hero_male/AnimationTree
 
@@ -52,25 +53,27 @@ var godmode_speed := 25.0
 var _tool_inventory: RefCounted = preload("res://Scripts/player/PlayerToolInventory.gd").new()
 var _interaction_controller: RefCounted
 var _movement_controller: RefCounted
+var _camera_controller: OrbitCameraController
 var _hero_base_yaw: float = 0.0
-var _camera_target_height: float = 1.6
-var _camera_target_distance: float = 1.57
-var _camera_yaw_global: float = 0.0
-var _camera_pitch: float = 0.0
+var _hover_frame_count: int = 0
 
 func _ready() -> void:
 	# Godot callback: runs when the node enters the scene tree and children are ready; sets up data, camera, tools, controllers, UI, and publishes initial state.
 	
 	add_to_group("player")
-	_player_data = SimulationCore.get_player(simulation_player_id)
+	_player_data = GameManager.session.entities.get_player(simulation_player_id)
 	_sync_from_simulation_core()
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	add_child(ui_layer)
 	_hero_base_yaw = hero_mesh.rotation.y
-	_camera_target_height = spring_arm.position.y
-	_camera_target_distance = spring_arm.spring_length
-	_camera_yaw_global = rotation.y + spring_arm.rotation.y
-	_camera_pitch = spring_arm.rotation.x
+	_camera_controller = OrbitCameraControllerRef.new()
+	add_child(_camera_controller)
+	_camera_controller.setup(spring_arm, camera)
+	_camera_controller.follow_smooth_speed = camera_follow_smooth_speed
+	_camera_controller.orbit_smooth_speed = camera_orbit_smooth_speed
+	_camera_controller.zoom_min = camera_zoom_min
+	_camera_controller.zoom_max = camera_zoom_max
+	_camera_controller.height_min = camera_height_min
+	_camera_controller.height_max = camera_height_max
 
 	_tool_inventory.add_tool(preload("res://Scripts/farm/tools/HoeTool.gd").new())
 	_tool_inventory.add_tool(preload("res://Scripts/farm/tools/SeedTool.gd").new())
@@ -80,12 +83,9 @@ func _ready() -> void:
 	_movement_controller = preload("res://Scripts/player/PlayerMovementController.gd").new(self, _player_data, gravity, hero_mesh, Anim_tree, _hero_base_yaw)
 	if Anim_tree != null:
 		_movement_controller.prime_animation_tree()
-	
-	if ui_layer.has_method("refresh_controls_text"):
-		ui_layer.refresh_controls_text()
 
 	# TERRAIN3D COLLISION FIX
-	var terrain = get_tree().root.find_child("Terrain3D", true, false)
+	var terrain: Node = get_tree().root.find_child("Terrain3D", true, false)
 	if terrain != null:
 		terrain.set_camera(camera)
 	
@@ -100,12 +100,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-		_camera_yaw_global = wrapf(_camera_yaw_global - event.relative.x * mouse_sensitivity, -PI, PI)
-		_camera_pitch = clampf(
-			_camera_pitch - event.relative.y * mouse_sensitivity,
-			deg_to_rad(camera_pitch_min_degrees),
-			deg_to_rad(camera_pitch_max_degrees)
-		)
+		_camera_controller.handle_mouse_motion(event.relative)
 	
 	if event.is_action_pressed("ui_cancel"):
 		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -120,11 +115,6 @@ func _input(event: InputEvent) -> void:
 		return
 
 	if event is InputEventKey:
-		# Toggle Help Menu
-		if GameInput.is_help_toggle_event(event):
-			ui_layer.toggle_help()
-			get_viewport().set_input_as_handled()
-			
 		# Equip Tools
 		if event.physical_keycode == KEY_1 and event.is_pressed() and not event.is_echo():
 			if _tool_inventory.equip_slot(1):
@@ -141,16 +131,70 @@ func _input(event: InputEvent) -> void:
 	# Use Tool
 	if event is InputEventMouseButton:
 		if event.is_action_pressed(GameInput.ACTION_CAMERA_ZOOM_IN):
-			_camera_target_distance = clamp(_camera_target_distance - camera_zoom_step, camera_zoom_min, camera_zoom_max)
+			_camera_controller.adjust_zoom(false)
 			get_viewport().set_input_as_handled()
 		elif event.is_action_pressed(GameInput.ACTION_CAMERA_ZOOM_OUT):
-			_camera_target_distance = clamp(_camera_target_distance + camera_zoom_step, camera_zoom_min, camera_zoom_max)
+			_camera_controller.adjust_zoom(true)
 			get_viewport().set_input_as_handled()
 
 		if event.button_index == MOUSE_BUTTON_LEFT and event.is_pressed() and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 			var active_tool: Tool = _tool_inventory.get_active_tool()
 			if _interaction_controller.try_use_tool(self, active_tool):
 				get_viewport().set_input_as_handled()
+		
+	# Test Drop (using 'G' for now as there is no UI yet)
+	if event is InputEventKey and event.keycode == KEY_G and event.pressed and not event.is_echo():
+		drop_item(0) # Drops first item in pockets for testing
+
+func drop_item(index: int) -> void:
+	if _player_data == null or _player_data.pockets.items.size() <= index:
+		return
+		
+	var item: ItemInstance = _player_data.pockets.remove_item(index)
+	if item == null:
+		return
+		
+	var def: ItemDefinition = item.get_definition()
+	if def == null or def.world_scene == null:
+		GameLog.warn("Cannot drop item %s: No world scene defined." % item.definition_id)
+		return
+		
+	var dropped_node: Node = def.world_scene.instantiate()
+	if not dropped_node is RigidBody3D:
+		GameLog.error("Dropped scene for %s must be a RigidBody3D" % item.definition_id)
+		dropped_node.queue_free()
+		return
+		
+	var spawn_pos: Vector3 = global_position + (-global_transform.basis.z * 1.5) + Vector3.UP * 1.0
+	
+	var interactable_node: InteractableItem3D = dropped_node if dropped_node is InteractableItem3D else null
+	if not interactable_node:
+		# Search children just in case
+		for child in dropped_node.get_children():
+			if child is InteractableItem3D:
+				interactable_node = child
+				break
+				
+	if interactable_node:
+		interactable_node.item_data = item
+	else:
+		GameLog.warn("Dropped scene lacks an InteractableItem3D script!")
+	
+	# Spawn into the same world as the player (crucial for World3D rendering)
+	var spawn_parent: Node = get_parent()
+	if spawn_parent:
+		spawn_parent.add_child(dropped_node)
+	else:
+		get_tree().root.add_child(dropped_node)
+		
+	dropped_node.global_position = spawn_pos
+	
+	# Impulse
+	var force: Vector3 = -global_transform.basis.z * 2.0 + Vector3.UP * 1.0
+	if dropped_node is RigidBody3D:
+		dropped_node.apply_central_impulse(force)
+	
+	GameLog.info("Dropped %s x%d" % [item.definition_id, item.stack])
 
 func toggle_godmode() -> bool:
 	is_godmode = not is_godmode
@@ -176,11 +220,15 @@ func _physics_process(delta: float) -> void:
 		_movement_controller.process_movement(
 			delta,
 			true,
-			Basis(Vector3.UP, _camera_yaw_global)
+			Basis(Vector3.UP, _camera_controller.get_yaw_global())
 		)
 
-	_update_camera_controls(delta)
-	_update_camera_orbit(delta)
+	_hover_frame_count += 1
+	if _hover_frame_count >= hover_ray_interval_frames:
+		_hover_frame_count = 0
+		_interaction_controller.process_hover(self)
+
+	_camera_controller.update(delta, GameInput.is_gameplay_input_blocked(get_tree()))
 	_publish_player_state_to_simulation_core()
 
 func _process_godmode(delta: float) -> void:
@@ -191,7 +239,7 @@ func _process_godmode(delta: float) -> void:
 		speed *= 0.2
 		
 	var input_dir := Input.get_vector("ui_left", "ui_right", "ui_up", "ui_down")
-	var cam_basis := Basis.from_euler(Vector3(_camera_pitch, _camera_yaw_global, 0))
+	var cam_basis := Basis.from_euler(Vector3(_camera_controller.pitch, _camera_controller.yaw_global, 0))
 	var direction := (cam_basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
 	
 	if Input.is_physical_key_pressed(KEY_SPACE):
@@ -206,7 +254,7 @@ func _sync_from_simulation_core() -> void:
 	# Pulls transform from SimulationCore if available so the player matches authoritative state.
 	
 	if _player_data == null:
-		_player_data = SimulationCore.get_player(simulation_player_id)
+		_player_data = GameManager.session.entities.get_player(simulation_player_id)
 	if not _player_data.has_world_transform:
 		return
 
@@ -216,37 +264,8 @@ func _sync_from_simulation_core() -> void:
 func _publish_player_state_to_simulation_core() -> void:
 	# Pushes the current transform into SimulationCore for other systems to consume.
 	
-	SimulationCore.set_player_transform(simulation_player_id, global_position, rotation.y)
+	GameManager.session.entities.set_player_transform(simulation_player_id, global_position, rotation.y)
 
 func _refresh_tool_ui() -> void:
 	# Updates the UI with the currently equipped tool name.
-	ui_layer.update_tool(_tool_inventory.get_active_tool_name())
-
-func _update_camera_controls(delta: float) -> void:
-	# Reads camera input (height/zoom), clamps targets, and lerps the spring arm to follow smoothly.
-	
-	if spring_arm == null:
-		return
-
-	if Input.is_action_pressed(GameInput.ACTION_CAMERA_UP):
-		_camera_target_height += camera_vertical_speed * delta
-	if Input.is_action_pressed(GameInput.ACTION_CAMERA_DOWN):
-		_camera_target_height -= camera_vertical_speed * delta
-
-	_camera_target_height = clamp(_camera_target_height, camera_height_min, camera_height_max)
-	_camera_target_distance = clamp(_camera_target_distance, camera_zoom_min, camera_zoom_max)
-
-	spring_arm.position.y = lerp(spring_arm.position.y, _camera_target_height, camera_follow_smooth_speed * delta)
-	spring_arm.spring_length = lerp(spring_arm.spring_length, _camera_target_distance, camera_follow_smooth_speed * delta)
-
-func _update_camera_orbit(delta: float) -> void:
-	# Keeps camera orbit stable relative to world yaw while smoothing pitch/yaw on the spring arm.
-	
-	if spring_arm == null:
-		return
-
-	var target_local_yaw: float = wrapf(_camera_yaw_global - rotation.y, -PI, PI)
-	# Keep world camera heading stable while the player turns to avoid one-frame orbit snaps.
-	spring_arm.rotation.y = target_local_yaw
-	spring_arm.rotation.x = lerpf(spring_arm.rotation.x, _camera_pitch, camera_orbit_smooth_speed * delta)
-	spring_arm.rotation.z = 0.0
+	EventBus.player_tool_equipped.emit(_tool_inventory.get_active_tool_name())

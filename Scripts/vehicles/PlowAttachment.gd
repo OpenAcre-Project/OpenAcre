@@ -39,14 +39,14 @@ func _plow_ground() -> void:
 		for i: int in range(-half_width_samples, half_width_samples + 1):
 			var sample_pos: Vector3 = center_pos + (right_dir * i)
 			
-			if not FarmData.can_plow_at(sample_pos):
+			if not GameManager.session.farm.can_plow_at(sample_pos):
 				continue
 				
-			var grid_pos: Vector2i = FarmData.world_to_grid(sample_pos)
+			var grid_pos: Vector2i = GameManager.session.farm.world_to_grid(sample_pos)
 
 			if soil_service != null and soil_service.has_method("plow_world"):
 				soil_service.plow_world(sample_pos)
 			else:
-				var tile_data: FarmTileData = FarmData.get_tile_data(grid_pos)
+				var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
 				if tile_data.state == FarmData.SoilState.GRASS:
-					FarmData.set_tile_state(grid_pos, FarmData.SoilState.PLOWED, sample_pos.y)
+					GameManager.session.farm.set_tile_state(grid_pos, FarmData.SoilState.PLOWED, sample_pos.y)

@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3 uid="uid://cx6i2qwhelp2u"]
+
+[ext_resource type="Script" path="res://Scenes/UI/HelpUI.gd" id="1_h"]
+
+[node name="HelpUI" type="PanelContainer"]
+custom_minimum_size = Vector2(300, 0)
+script = ExtResource("1_h")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 18
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 18
+theme_override_constants/margin_bottom = 18
+
+[node name="HelpText" type="Label" parent="Margin"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Help Text Here"

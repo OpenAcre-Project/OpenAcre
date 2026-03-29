@@ -1,6 +1,6 @@
 # :world_map: Map Fields Architecture | [Home](../index.md)
 
-Open Farm supports a modular map architecture where each map can define its own plowing fields via a data-driven approach. This keeps the engine robust and completely generic to map variations.
+OpenAcre supports a modular map architecture where each map can define its own plowing fields via a data-driven approach. This keeps the engine robust and completely generic to map variations.
 
 ---
 
@@ -50,7 +50,7 @@ Updating thousands of initial tiles into the `FarmData` logic grid forces `tile_
 ### :loop: Suppression and Batch Rendering Pipeline
 
 !!! warning "Avoid Individual GPU Calls"
-    Open Farm implements a Batch Rendering Pipeline to solve the signal storm constraint.
+    OpenAcre implements a Batch Rendering Pipeline to solve the signal storm constraint.
 
 1. **Signal Suppression**: coordinates changes via `set_tile_state(..., emit_signal=false)`.
 2. **Visual Rebuild Mode**: `MapManager` instructs `SoilLayerService` to redraw the map identically using `rebuild_visuals_from_data()`.

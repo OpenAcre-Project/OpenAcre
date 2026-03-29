@@ -1,6 +1,11 @@
-# :house: Open Farm Documentation
+---
+title: OpenAcre | Hardcore Open-Source Farming & Survival Simulator
+description: The OpenAcre project documentation. A systemic, data-driven farming simulation engine for Godot 4. Realistic agriculture mechanics and survival.
+---
 
-Welcome to the **Open Farm** Godot prototype. This project is a data-driven farming simulation engine designed for scalability, persistence, and performance.
+# :house: OpenAcre Documentation
+
+Welcome to the **OpenAcre** Godot prototype. This project is a data-driven farming simulation engine designed for scalability, persistence, and performance.
 
 !!! info "Architecture at a Glance"
     This project is organized by domain first, then by scene-facing scripts, strictly following a **Logic-Visual Separation** pattern.

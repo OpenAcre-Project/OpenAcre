@@ -1,0 +1,47 @@
+labels: []
+body:
+    - type: checkboxes
+      id: no-duplicate-issues
+      attributes:
+          label: "⚠️ Please check that this feature request hasn't been suggested before."
+          options:
+              - label: "I searched previous [Ideas in Discussions](https://github.com/OpenAcre-Project/OpenAcre/discussions/categories/ideas) and didn't find any similar feature requests."
+                required: true
+              - label: "I searched previous [Issues](https://github.com/OpenAcre-Project/OpenAcre/issues) and didn't find any similar feature requests."
+                required: true
+
+    - type: textarea
+      id: feature-description
+      validations:
+          required: true
+      attributes:
+          label: "🔖 Feature description"
+          description: "A clear and concise description of what the feature request is."
+          placeholder: "I would like to see..."
+
+    - type: textarea
+      id: solution
+      validations:
+          required: true
+      attributes:
+          label: "✔️ Solution"
+          description: "A clear and concise description of what you want to happen, and why."
+          placeholder: "The engine should support..."
+
+    - type: textarea
+      id: alternatives
+      validations:
+          required: false
+      attributes:
+          label: "❓ Alternatives"
+          description: "A clear and concise description of any alternative solutions or features you've considered."
+          placeholder: "I have considered using..."
+
+    - type: textarea
+      id: additional-context
+      validations:
+          required: false
+      attributes:
+          label: "📝 Additional Context"
+          description: "Add any other context or screenshots about the feature request here."
+          placeholder: "Screenshots, diagrams, or logic flows..."

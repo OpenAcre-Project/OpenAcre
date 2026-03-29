@@ -7,7 +7,7 @@ The application boots from `Scenes/Main.tscn`, which immediately establishes the
 ## 🏗️ Simulation Sequence
 
 !!! abstract "Boot Sequence"
-    Open Farm initializes logic before visuals to ensure the world state is ready before the first frame is rendered.
+    OpenAcre initializes logic before visuals to ensure the world state is ready before the first frame is rendered.
 
 1. **`GameManager` Load**: Reads the local configuration or save file.
 2. **`SimulationCore` Start**: Boots the `EntityManager` and `TimeManager`.

@@ -7,7 +7,7 @@ This project does not git-track addon sources, so this file records local addon 
 ## 🛠️ GEVP (Godot Easy Vehicle Physics)
 
 !!! abstract "Core Modifications"
-    The base GEVP plugin was patched to support the **Open Farm** deterministic steering and state persistence architecture.
+    The base GEVP plugin was patched to support the **OpenAcre** deterministic steering and state persistence architecture.
 
 - **`vehicle.gd` Patch**: Exposed internal torque and suspension parameters to the `Vehicle3D` wrapper.
 - **Wheel Raycast Fix**: Modified the raycast calculation to handle [Terrain3D](../rendering/terrain3d_rendering.md) positive coordinate grids more accurately.

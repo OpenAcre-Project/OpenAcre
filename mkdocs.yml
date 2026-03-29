@@ -1,5 +1,8 @@
-site_name: Open Farm Documentation
-site_url: ""
+site_name: OpenAcre Documentation
+site_url: https://openacre-project.github.io/OpenAcre/
+site_description: OpenAcre is a hardcore, open-source farming and survival simulator built in Godot 4. The best realistic agricultural engine for systemic game design.
+site_author: The OpenAcre Project
+copyright: Copyright &copy; 2026 The OpenAcre Project
 nav:
   - Home: index.md
   - Architecture:
@@ -22,17 +25,34 @@ theme:
   name: material
   language: en
   palette:
-    scheme: slate
-    primary: deep orange
-    accent: deep orange
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+  font:
+    text: Outfit
+    code: Fira Code
   features:
     - navigation.tabs
     - navigation.sections
     - navigation.top
     - navigation.tracking
+    - navigation.expand
+    - navigation.indexes
     - search.suggest
     - search.highlight
+    - search.share
     - content.code.copy
+    - content.code.annotate
+    - content.tabs.link
 
 markdown_extensions:
   - admonition
@@ -51,6 +71,9 @@ markdown_extensions:
       custom_checkbox: true
   - toc:
       permalink: true
+
+extra_css:
+  - Assets/stylesheets/extra.css
 
 extra_javascript:
   - javascripts/mathjax.js

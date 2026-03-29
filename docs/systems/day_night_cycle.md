@@ -1,6 +1,6 @@
 # :clock1: Day/Night Cycle | [Home](../index.md)
 
-The Day/Night cycle in Open Farm is split into a logical simulation (tracking time) and a visual controller (animating light and environment).
+The Day/Night cycle in OpenAcre is split into a logical simulation (tracking time) and a visual controller (animating light and environment).
 
 ---
 

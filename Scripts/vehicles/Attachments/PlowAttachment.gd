@@ -1,8 +1,19 @@
-extends Implement3D
+extends "res://Scripts/vehicles/Implement3D.gd"
 
 @export var plow_width: float = 3.0
+@export var min_apply_speed_sq: float = 0.005
+@export var ground_contact_probe_margin: float = 0.20
+@export var ground_contact_probe_depth: float = 1.50
+@export var use_terrain_probe_fallback: bool = true
 
 @onready var detection_area: Area3D = $DetectionArea
+@onready var teeth_collision_region: Area3D = get_node_or_null("TeethCollisionRegion") as Area3D
+
+var _teeth_collision_shapes: Array[CollisionShape3D] = []
+var _teeth_region_default_monitoring: bool = true
+var _teeth_region_default_monitorable: bool = true
+var _teeth_region_default_layer: int = 1
+var _teeth_region_default_mask: int = 1
 
 func _ready() -> void:
 	required_power_kw = 25.0
@@ -10,19 +21,25 @@ func _ready() -> void:
 	var shape: BoxShape3D = BoxShape3D.new()
 	shape.size = Vector3(plow_width, 0.5, 0.5)
 	$DetectionArea/CollisionShape3D.shape = shape
+	_cache_teeth_collision_region_defaults()
 	super._ready()
 	_update_processing_state()
 
 func _on_lower_changed(_state: bool) -> void:
 	_update_processing_state()
+	if not is_lowered:
+		_force_collision_rebuild()
 
 func _on_pto_changed(_state: bool) -> void:
 	_update_processing_state()
+	if not is_active:
+		_force_collision_rebuild()
 
 func _update_processing_state() -> void:
 	var should_process: bool = is_lowered and is_active
 	set_physics_process(should_process)
 	detection_area.monitoring = should_process
+	_set_teeth_collision_region_active(not should_process)
 
 func _physics_process(_delta: float) -> void:
 	super._physics_process(_delta)
@@ -31,18 +48,99 @@ func _physics_process(_delta: float) -> void:
 	var attached_vehicle := get_attached_vehicle()
 	if attached_vehicle != null:
 		move_speed_sq = attached_vehicle.linear_velocity.length_squared()
-	if move_speed_sq > 0.1:
-		_plow_ground()
+	if move_speed_sq <= min_apply_speed_sq:
+		return
+	if not _is_touching_floor():
+		return
+
+	var soil_service: Node = get_tree().get_first_node_in_group("soil_layer_service")
+	if soil_service != null and soil_service.has_method("apply_ground_effectors"):
+		var batch: Array[Dictionary] = collect_ground_effector_batch(false)
+		if not batch.is_empty():
+			soil_service.apply_ground_effectors(batch)
+		return
+
+	# Legacy fallback for scenes that have no GroundEffector3D nodes yet.
+	_plow_ground()
+
+func _is_touching_floor() -> bool:
+	var overlapping_bodies: Array = detection_area.get_overlapping_bodies()
+	for body: Node in overlapping_bodies:
+		if body == self:
+			continue
+		var attached_vehicle: RigidBody3D = get_attached_vehicle()
+		if attached_vehicle != null and body == attached_vehicle:
+			continue
+		if _is_ground_body(body):
+			return true
+
+	if use_terrain_probe_fallback and _is_touching_terrain_by_height_probe():
+		return true
+	return false
+
+func _is_touching_terrain_by_height_probe() -> bool:
+	var terrain: Node = get_tree().get_first_node_in_group("terrain_node")
+	if terrain == null:
+		return false
+
+	var terrain_api: Object = null
+	if terrain.has_method("get_data"):
+		terrain_api = terrain.get_data()
+	elif terrain.has_method("get_storage"):
+		terrain_api = terrain.get_storage()
+	elif "data" in terrain:
+		terrain_api = terrain.get("data")
+
+	if terrain_api == null or not terrain_api.has_method("get_height"):
+		return false
+
+	var probe_points: Array[Vector3] = [global_position, detection_area.global_position]
+	for effector_any: Variant in find_children("*", "GroundEffector3D", true, false):
+		if effector_any is Node3D:
+			probe_points.append((effector_any as Node3D).global_position)
+
+	for point: Vector3 in probe_points:
+		var terrain_height: float = float(terrain_api.get_height(point))
+		if is_nan(terrain_height):
+			continue
+		if point.y <= terrain_height + ground_contact_probe_margin and point.y >= terrain_height - ground_contact_probe_depth:
+			return true
+
+	return false
+
+func _is_ground_body(body: Node) -> bool:
+	if body == null:
+		return false
+
+	var lower_name: String = body.name.to_lower()
+	if lower_name.contains("floor") or lower_name.contains("terrain"):
+		return true
+
+	if body.get_class() == "Terrain3D":
+		return true
+
+	if body.is_in_group("terrain_node"):
+		return true
+
+	var parent: Node = body.get_parent()
+	while parent != null:
+		if parent.is_in_group("terrain_node") or parent.get_class() == "Terrain3D":
+			return true
+		parent = parent.get_parent()
+
+	# Last-resort fallback: terrain collision often arrives as static collision bodies.
+	if body is StaticBody3D:
+		return true
+
+	return false
+
+func _force_collision_rebuild() -> void:
+	var soil_service: Node = get_tree().get_first_node_in_group("soil_layer_service")
+	if soil_service != null and soil_service.has_method("force_collision_rebuild"):
+		soil_service.force_collision_rebuild()
 
 func _plow_ground() -> void:
-	var overlapping_bodies: Array = detection_area.get_overlapping_bodies()
-	# Check if we are physically touching the floor
-	var touching_floor: bool = false
-	for body: Node in overlapping_bodies:
-		if body.name == "Floor":
-			touching_floor = true
-			break
-	if not touching_floor:
+	if not _is_touching_floor():
 		return
 	var soil_service: Node = get_tree().get_first_node_in_group("soil_layer_service")
 	# Calculate grid coords from left to right along the plow width
@@ -61,3 +159,28 @@ func _plow_ground() -> void:
 			var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
 			if tile_data.state == FarmData.SoilState.GRASS:
 				GameManager.session.farm.set_tile_state(grid_pos, FarmData.SoilState.PLOWED, sample_pos.y)
+func _cache_teeth_collision_region_defaults() -> void:
+	if teeth_collision_region == null:
+		return
+
+	_teeth_collision_shapes.clear()
+	for child_any: Variant in teeth_collision_region.get_children():
+		if child_any is CollisionShape3D:
+			_teeth_collision_shapes.append(child_any)
+
+	_teeth_region_default_monitoring = teeth_collision_region.monitoring
+	_teeth_region_default_monitorable = teeth_collision_region.monitorable
+	_teeth_region_default_layer = teeth_collision_region.collision_layer
+	_teeth_region_default_mask = teeth_collision_region.collision_mask
+
+func _set_teeth_collision_region_active(is_active_state: bool) -> void:
+	if teeth_collision_region == null:
+		return
+
+	teeth_collision_region.monitoring = _teeth_region_default_monitoring if is_active_state else false
+	teeth_collision_region.monitorable = _teeth_region_default_monitorable if is_active_state else false
+	teeth_collision_region.collision_layer = _teeth_region_default_layer if is_active_state else 0
+	teeth_collision_region.collision_mask = _teeth_region_default_mask if is_active_state else 0
+
+	for shape: CollisionShape3D in _teeth_collision_shapes:
+		shape.disabled = not is_active_state

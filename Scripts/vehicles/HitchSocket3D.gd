@@ -15,6 +15,11 @@ signal implement_detached(implement_node: RigidBody3D)
 
 @export_group("Physics Tuning")
 @export var physics_blackout_frames: int = 0
+@export var x_axis_position_stiffness: float = 240.0
+@export var x_axis_velocity_damping: float = 100.0
+@export var max_x_axis_stabilization_g: float = 8.0
+@export var x_axis_yaw_damping: float = 70.0
+@export var max_x_axis_yaw_stabilization_torque: float = 28000.0
 
 var _attached_implement: Implement3D = null
 var _hitch_tween: Tween = null
@@ -316,6 +321,31 @@ func _sync_implement_transform(dt: float) -> void:
 			var kp: float = 150.0 # Down from 800.0
 			var kd: float = 30.0  # Down from 80.0
 			var force: Vector3 = attachement_rb.mass * ((err_pos * kp) + (err_vel * kd))
+
+			# EXTRA X-AXIS (LATERAL) DAMPING: reduce side-to-side hitch wobble while preserving forward pull.
+			var hitch_right: Vector3 = hitch_point.global_transform.basis.x.normalized() if hitch_point else tractor.global_transform.basis.x.normalized()
+			var lateral_pos_error: float = err_pos.dot(hitch_right)
+			var lateral_vel_error: float = err_vel.dot(hitch_right)
+			var lateral_force: Vector3 = hitch_right * attachement_rb.mass * (
+				(lateral_pos_error * x_axis_position_stiffness) +
+				(lateral_vel_error * x_axis_velocity_damping)
+			)
+
+			var lateral_limit: float = tractor.mass * 9.8 * maxf(max_x_axis_stabilization_g, 0.0)
+			if lateral_limit > 0.0 and lateral_force.length() > lateral_limit:
+				lateral_force = lateral_force.normalized() * lateral_limit
+
+			force += lateral_force
+
+			var hitch_up: Vector3 = hitch_point.global_transform.basis.y.normalized() if hitch_point else tractor.global_transform.basis.y.normalized()
+			var relative_yaw_rate: float = (attachement_rb.angular_velocity - tractor.angular_velocity).dot(hitch_up)
+			var yaw_stabilization_torque: Vector3 = -hitch_up * (relative_yaw_rate * x_axis_yaw_damping * attachement_rb.mass)
+			var yaw_torque_limit: float = maxf(max_x_axis_yaw_stabilization_torque, 0.0)
+			if yaw_torque_limit > 0.0 and yaw_stabilization_torque.length() > yaw_torque_limit:
+				yaw_stabilization_torque = yaw_stabilization_torque.normalized() * yaw_torque_limit
+			if yaw_stabilization_torque.length_squared() > 0.0:
+				attachement_rb.apply_torque(yaw_stabilization_torque)
+				tractor.apply_torque(-yaw_stabilization_torque * 0.2)
 			
 			# STRICT FORCE CAP: Prevents the "500 Gs" explosion
 			# Caps the max pull to about ~5 Gs relative to the tractor's mass

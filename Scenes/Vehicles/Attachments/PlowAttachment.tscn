@@ -1,43 +1,64 @@
 [gd_scene format=3 uid="uid://c2jrylig6ynlj"]
 
 [ext_resource type="Script" uid="uid://cuesgw25fq0pv" path="res://Scripts/vehicles/Attachments/PlowAttachment.gd" id="1_plow_gd"]
+[ext_resource type="Script" uid="uid://dmtwjwlsku7t1" path="res://Scripts/vehicles/GroundEffector3D.gd" id="2_ground_effector"]
+[ext_resource type="PackedScene" uid="uid://bnseushs8j3a3" path="res://Assets/Vehicles/Implements/Plow1.glb" id="3_yy3co"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_plow"]
-size = Vector3(6.3775635, 1.2308655, 0.76660156)
-
-[sub_resource type="BoxMesh" id="BoxMesh_plow"]
-size = Vector3(3, 0.5, 0.5)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plow_color"]
-albedo_color = Color(0.1, 0.4, 0.1, 1)
+size = Vector3(3.024414, 0.93855286, 0.6488037)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_plow_detection_big"]
-size = Vector3(3.0507813, 2, 1.9746094)
+size = Vector3(1.5477295, 1.2224121, 1.0136719)
 
-[sub_resource type="BoxMesh" id="BoxMesh_cmr70"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_teeth_collision_region"]
+size = Vector3(2.9482179, 0.6057617, 1.0203491)
 
 [node name="PlowAttachment" type="RigidBody3D" unique_id=191783416]
 mass = 500.0
 script = ExtResource("1_plow_gd")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1038087730]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.010559082, 0.607193, -0.8358493)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.010559082, 0.56287384, -0.13743505)
 shape = SubResource("BoxShape3D_plow")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=344549370]
-transform = Transform3D(2.1372414, 0, 0, 0, 2.535868, 0, 0, 0, 1.4781109, 0, 0.6198729, -0.860651)
-mesh = SubResource("BoxMesh_plow")
-surface_material_override/0 = SubResource("StandardMaterial3D_plow_color")
-
 [node name="HitchPoint" type="Marker3D" parent="." unique_id=35124642]
-transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0.93290734, 0.41467237)
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 1.2216582, 0.5512169)
 
 [node name="DetectionArea" type="Area3D" parent="." unique_id=387554892]
 transform = Transform3D(1.8935407, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.84343684, 0.5)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea" unique_id=1337859789]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0077514667, 0.38879395, -0.4876557)
 shape = SubResource("BoxShape3D_plow_detection_big")
 
-[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=786605468]
-transform = Transform3D(1, 0, 0, 0, 0.52760667, 0, 0, 0, 1.329943, 0, 0.97285855, -0.13604093)
-mesh = SubResource("BoxMesh_cmr70")
+[node name="TeethCollisionRegion" type="Area3D" parent="." unique_id=44190218]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0, 0.15, 0.0059557706)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="TeethCollisionRegion" unique_id=44190219]
+transform = Transform3D(0.9999877, 0, 0, 0, 1, 0, 0, 0, 0.9999877, 0.010241565, 0.14969283, 0.060173854)
+shape = SubResource("BoxShape3D_teeth_collision_region")
+debug_color = Color(0.7771382, 0.38982522, 0.5371714, 0.92941177)
+
+[node name="ToothCutLeft" type="Marker3D" parent="." unique_id=72716001]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 1.4338386, -0.042125642, 0.4097651)
+script = ExtResource("2_ground_effector")
+effect_radius = 0.18
+
+[node name="ToothRidgeLeft" type="Marker3D" parent="." unique_id=72716002]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, 0.7237562, -0.054807454, 0.4120081)
+script = ExtResource("2_ground_effector")
+effect_radius = 0.18
+target_depth_offset = 0.08
+
+[node name="ToothCutRight" type="Marker3D" parent="." unique_id=72716003]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -1.4338386, -0.05076897, 0.40346166)
+script = ExtResource("2_ground_effector")
+effect_radius = 0.18
+
+[node name="ToothRidgeRight" type="Marker3D" parent="." unique_id=72716004]
+transform = Transform3D(0.99999994, 0, 0, 0, 1, 0, 0, 0, 0.99999994, -0.7115755, -0.05785221, 0.40839732)
+script = ExtResource("2_ground_effector")
+effect_radius = 0.18
+target_depth_offset = 0.08
+
+[node name="Plow12" parent="." unique_id=812379352 instance=ExtResource("3_yy3co")]

@@ -54,6 +54,9 @@ Vehicles that support towing implements must use a component-based attachment sy
 - **StreamingGroup Integration**: When an implement is attached, `HitchSocket3D` assigns both entities to the same `StreamingGroup`, ensuring the entire chain stays loaded across chunk boundaries.
 - **Signal-Bound Teardowns**: Socket interactions use memory-safe signals (`signal.connect(_func.bind(socket))`).
 
+!!! info "Ground Deformation Source of Truth"
+    For plow teeth setup, GroundEffector markers, terrain write flow, persistence behavior, and tuning guidance, use [Ground Effectors and Plowing](ground_effectors_and_plowing.md).
+
 ---
 
 ## Steering Mechanics

@@ -17,6 +17,9 @@ static func populate_world(world_root: Node3D) -> void:
 		GameLog.warn("[MapManager] No MapDefinition found in map_root group!")
 		return
 
+	if GameManager.session != null and GameManager.session.is_new_game:
+		_isolate_runtime_terrain_data(tree)
+
 	if map_def.region_mask != null:
 		GameManager.session.farm.set_active_region_mask(map_def.region_mask)
 		GameLog.info("[MapManager] Registered MapRegionMask with FarmData")
@@ -50,6 +53,51 @@ static func populate_world(world_root: Node3D) -> void:
 	var spooler_node: Node = world_root.find_child("StreamSpooler", true, false)
 	if spooler_node != null and spooler_node.has_method("refresh_from_current_chunks"):
 		spooler_node.call("refresh_from_current_chunks", "post_register_vehicles")
+
+	if GameManager.session != null and GameManager.session.is_new_game:
+		GameManager.session.is_new_game = false
+
+static func _isolate_runtime_terrain_data(tree: SceneTree) -> void:
+	var terrain: Node = tree.get_first_node_in_group("terrain_node")
+	if terrain == null:
+		return
+
+	if terrain.has_meta("runtime_terrain_data_isolated") and bool(terrain.get_meta("runtime_terrain_data_isolated")):
+		return
+
+	var source_data: Resource = null
+	if terrain.has_method("get_data"):
+		var data_candidate: Variant = terrain.call("get_data")
+		if data_candidate is Resource:
+			source_data = data_candidate
+	elif "data" in terrain:
+		var data_property: Variant = terrain.get("data")
+		if data_property is Resource:
+			source_data = data_property
+
+	if source_data == null:
+		GameLog.warn("[MapManager] Terrain3D data unavailable for runtime isolation.")
+		return
+
+	var runtime_copy: Resource = source_data.duplicate(true)
+	if runtime_copy == null:
+		GameLog.error("[MapManager] Failed to duplicate Terrain3D data resource.")
+		return
+
+	if terrain.has_method("set_data"):
+		terrain.call("set_data", runtime_copy)
+	elif "data" in terrain:
+		terrain.set("data", runtime_copy)
+	else:
+		GameLog.error("[MapManager] Terrain3D node does not support setting data resource.")
+		return
+
+	terrain.set_meta("runtime_terrain_data_isolated", true)
+	GameLog.info("[MapManager] Isolated runtime Terrain3D data from pristine map resource.")
+
+	var soil_service: Node = tree.get_first_node_in_group("soil_layer_service")
+	if soil_service != null and soil_service.has_method("refresh_terrain_api"):
+		soil_service.call("refresh_terrain_api")
 
 static func _ensure_streaming_runtime(world_root: Node3D, tree: SceneTree) -> void:
 	var world_container: Node = tree.get_first_node_in_group("world_entity_container")

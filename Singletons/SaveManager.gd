@@ -48,6 +48,7 @@ func save_slot(slot_index: int = 1) -> bool:
 		return false
 
 	_recover_interrupted_slot(slot_index)
+	_force_soil_collision_rebuild()
 
 	if EventBus.has_signal("pre_save_flush"):
 		EventBus.pre_save_flush.emit()
@@ -104,6 +105,9 @@ func save_slot(slot_index: int = 1) -> bool:
 		if not _write_json(farm_layers_dir.path_join("planted_time.json"), _build_planted_time_fallback(farm, crop_to_id)):
 			return false
 
+	if not _save_runtime_terrain_data(tmp_dir):
+		return false
+
 	if not _atomic_swap_slot(slot_dir, tmp_dir, bak_dir):
 		return false
 
@@ -154,6 +158,8 @@ func load_slot(slot_index: int = 1) -> bool:
 	_restore_player(metadata)
 	_repair_orphaned_entities()
 	_restore_farm_layers(slot_dir, crop_lookup)
+	if not _restore_runtime_terrain_data(slot_dir):
+		return false
 	_rebuild_world_farm_visuals_after_load()
 
 	_teleport_player_node_to_data()
@@ -174,6 +180,8 @@ func load_slot(slot_index: int = 1) -> bool:
 
 	if EventBus.has_signal("game_loaded_successfully"):
 		EventBus.game_loaded_successfully.emit()
+
+	GameManager.session.is_new_game = false
 
 	return true
 
@@ -550,6 +558,109 @@ func _recover_interrupted_slot(slot_index: int) -> void:
 
 func _find_stream_spooler() -> Node:
 	return get_tree().root.find_child("StreamSpooler", true, false)
+
+func _find_terrain_node() -> Node:
+	return get_tree().get_first_node_in_group("terrain_node")
+
+func _extract_terrain_data_resource(terrain: Node) -> Resource:
+	if terrain == null:
+		return null
+
+	if terrain.has_method("get_data"):
+		var data_candidate: Variant = terrain.call("get_data")
+		if data_candidate is Resource:
+			return data_candidate
+
+	if "data" in terrain:
+		var property_data: Variant = terrain.get("data")
+		if property_data is Resource:
+			return property_data
+
+	return null
+
+func _assign_terrain_data_resource(terrain: Node, data_resource: Resource) -> bool:
+	if terrain == null or data_resource == null:
+		return false
+
+	if terrain.has_method("set_data"):
+		terrain.call("set_data", data_resource)
+		return true
+
+	if "data" in terrain:
+		terrain.set("data", data_resource)
+		return true
+
+	return false
+
+func _save_runtime_terrain_data(tmp_dir: String) -> bool:
+	var terrain: Node = _find_terrain_node()
+	if terrain == null:
+		return true
+
+	var terrain_data: Resource = _extract_terrain_data_resource(terrain)
+	if terrain_data == null:
+		GameLog.warn("[SaveManager] Terrain3D data resource missing; skipping terrain save.")
+		return true
+
+	var save_path: String = tmp_dir.path_join("terrain_modified.res")
+	var save_err: Error = ResourceSaver.save(terrain_data, save_path)
+	if save_err == OK:
+		return true
+
+	GameLog.warn("[SaveManager] Failed to save terrain_modified.res, trying Terrain3D directory fallback.")
+	var fallback_dir: String = tmp_dir.path_join("TerrainData")
+	if not _ensure_dir(fallback_dir):
+		GameLog.error("[SaveManager] Failed to create TerrainData fallback directory.")
+		return false
+
+	if terrain_data.has_method("save_directory"):
+		terrain_data.call("save_directory", fallback_dir)
+		return true
+
+	GameLog.error("[SaveManager] Terrain3D data has no save_directory fallback method.")
+	return false
+
+func _restore_runtime_terrain_data(slot_dir: String) -> bool:
+	var terrain: Node = _find_terrain_node()
+	if terrain == null:
+		return true
+
+	var terrain_res_path: String = slot_dir.path_join("terrain_modified.res")
+	var loaded_data: Resource = null
+
+	if FileAccess.file_exists(terrain_res_path):
+		loaded_data = ResourceLoader.load(terrain_res_path, "", ResourceLoader.CACHE_MODE_IGNORE) as Resource
+		if loaded_data != null:
+			if not _assign_terrain_data_resource(terrain, loaded_data):
+				GameLog.error("[SaveManager] Failed to assign loaded terrain data resource.")
+				return false
+			_refresh_soil_layer_terrain_api()
+			_force_soil_collision_rebuild()
+			return true
+
+	var fallback_dir: String = slot_dir.path_join("TerrainData")
+	if not _dir_exists(fallback_dir):
+		return true
+
+	var terrain_data: Resource = _extract_terrain_data_resource(terrain)
+	if terrain_data != null and terrain_data.has_method("load_directory"):
+		terrain_data.call("load_directory", fallback_dir)
+		_refresh_soil_layer_terrain_api()
+		_force_soil_collision_rebuild()
+		return true
+
+	GameLog.error("[SaveManager] TerrainData fallback exists but terrain data cannot load it.")
+	return false
+
+func _refresh_soil_layer_terrain_api() -> void:
+	var soil_service: Node = get_tree().get_first_node_in_group("soil_layer_service")
+	if soil_service != null and soil_service.has_method("refresh_terrain_api"):
+		soil_service.call("refresh_terrain_api")
+
+func _force_soil_collision_rebuild() -> void:
+	var soil_service: Node = get_tree().get_first_node_in_group("soil_layer_service")
+	if soil_service != null and soil_service.has_method("force_collision_rebuild"):
+		soil_service.call("force_collision_rebuild")
 
 func _write_json(path: String, payload: Dictionary) -> bool:
 	var file := FileAccess.open(path, FileAccess.WRITE)

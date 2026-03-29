@@ -1,5 +1,9 @@
 # Plow Attachment System — Implementation History
 
+!!! warning "Historical Log Only"
+    This page is a historical iteration log.
+    The authoritative implementation guide is [Ground Effectors and Plowing](../systems/ground_effectors_and_plowing.md).
+
 > **Purpose:** This document records every approach tried for attaching implements (plow) to the tractor, what was observed, and why each failed. Use this to avoid repeating failed approaches.
 
 ---

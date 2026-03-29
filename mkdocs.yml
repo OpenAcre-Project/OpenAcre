@@ -13,6 +13,7 @@ nav:
       - Map Fields: architecture/map_fields_architecture.md
   - Systems:
       - Vehicles: systems/vehicles.md
+      - Ground Effectors and Plowing: systems/ground_effectors_and_plowing.md
       - Camera: systems/camera.md
       - Items & Inventory: systems/items_and_inventory.md
       - Day/Night Cycle: systems/day_night_cycle.md

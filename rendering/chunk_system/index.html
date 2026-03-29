@@ -1,0 +1,1856 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="OpenAcre is a hardcore, open-source farming and survival simulator built in Godot 4. The best realistic agricultural engine for systemic game design.">
+      
+      
+        <meta name="author" content="The OpenAcre Project">
+      
+      
+        <link rel="canonical" href="https://openacre-project.github.io/OpenAcre/rendering/chunk_system/">
+      
+      
+        <link rel="prev" href="../terrain3d_rendering/">
+      
+      
+        <link rel="next" href="../../dev/developer_console/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Chunk System - OpenAcre Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit:300,300i,400,400i,700,700i%7CFira+Code:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Outfit";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../Assets/stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/technical-docs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#chunk-catch-up-system-home" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="OpenAcre Documentation" class="md-header__button md-logo" aria-label="OpenAcre Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OpenAcre Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Chunk System
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../systems/vehicles/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Systems
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../terrain3d_rendering/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Visualization
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev/developer_console/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev_log/plow_attachment/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dev Log
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="OpenAcre Documentation" class="md-nav__button md-logo" aria-label="OpenAcre Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    OpenAcre Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/core_runtime/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/save_load_runtime/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Save/Load Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ui_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/map_fields_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Map Fields
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Systems
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/vehicles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vehicles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/camera/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Camera
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/items_and_inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Items & Inventory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/day_night_cycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Day/Night Cycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Visualization
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../terrain3d_rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terrain3D
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chunk System
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chunk System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-sources-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Sources Of Truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-controls-fall-through-distance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Controls Fall-Through Distance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#streamspooler-coupling-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StreamSpooler Coupling Formula
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#critical-startup-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Critical Startup Sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uess-ownership-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UESS Ownership Rule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#streaming-groups-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming Groups Behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#active-vehicle-safety-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active Vehicle Safety Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tuning-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuning Guidance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vehicles-never-despawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vehicles never despawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#active-driven-vehicle-despawns-or-camera-is-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active driven vehicle despawns or camera is lost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_inside_tree-errors-during-spawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        !is_inside_tree() errors during spawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changing-chunk-radius-has-little-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changing chunk radius has little effect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catch-up-reminder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Catch-Up Reminder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saveload-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save/Load Coupling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/developer_console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/save_load_qa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Save/Load QA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/advanced_attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vehicle Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/addon_patches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Addon Patches
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Log
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dev Log
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev_log/plow_attachment/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plow Attachment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-sources-of-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime Sources Of Truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-controls-fall-through-distance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Controls Fall-Through Distance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#streamspooler-coupling-formula" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        StreamSpooler Coupling Formula
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#critical-startup-sequence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Critical Startup Sequence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uess-ownership-rule" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        UESS Ownership Rule
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#streaming-groups-behavior" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming Groups Behavior
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#active-vehicle-safety-rules" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active Vehicle Safety Rules
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tuning-guidance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tuning Guidance
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#vehicles-never-despawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Vehicles never despawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#active-driven-vehicle-despawns-or-camera-is-lost" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Active driven vehicle despawns or camera is lost
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#is_inside_tree-errors-during-spawn" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        !is_inside_tree() errors during spawn
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#changing-chunk-radius-has-little-effect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Changing chunk radius has little effect
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#catch-up-reminder" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Catch-Up Reminder
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#saveload-coupling" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Save/Load Coupling
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="chunk-catch-up-system-home"><img alt="📐" class="twemoji" src="https://cdn.jsdelivr.net/gh/jdecked/twemoji@16.0.1/assets/svg/1f4d0.svg" title=":triangular_ruler:" /> Chunk &amp; Catch-Up System | <a href="../../">Home</a><a class="headerlink" href="#chunk-catch-up-system-home" title="Permanent link">&para;</a></h1>
+<p>The project uses separate systems for simulation chunks, visual streaming, and Terrain3D collision. Fall-through prevention depends on all three being aligned.</p>
+<hr />
+<h2 id="runtime-sources-of-truth">Runtime Sources Of Truth<a class="headerlink" href="#runtime-sources-of-truth" title="Permanent link">&para;</a></h2>
+<p>Primary runtime files:</p>
+<ul>
+<li><code>Scripts/streaming/StreamSpooler.gd</code>: UESS visual load/unload logic and Terrain3D collision coupling.</li>
+<li><code>Scripts/streaming/GridManager.gd</code>: chunk math for active-chunk sets and deltas.</li>
+<li><code>Scripts/farm/GridManager.gd</code>: map simulation chunk streaming (<code>streamed_chunk_radius</code>).</li>
+<li><code>Scripts/core/MapManager.gd</code>: runtime bootstrap for <code>WorldEntityContainer</code> and <code>StreamSpooler</code>.</li>
+</ul>
+<hr />
+<h2 id="what-controls-fall-through-distance">What Controls Fall-Through Distance<a class="headerlink" href="#what-controls-fall-through-distance" title="Permanent link">&para;</a></h2>
+<p>Three bounds matter:</p>
+<ol>
+<li>Simulation chunk radius (<code>Scripts/farm/GridManager.gd</code>) controls farm/chunk simulation loading.</li>
+<li>Terrain3D collision radius (<code>Terrain3D.collision_radius</code>) controls where wheel/ground physics exists.</li>
+<li>StreamSpooler load/unload radii control when UESS views are instantiated/despawned.</li>
+</ol>
+<p><code>StreamSpooler</code> couples #2 and #3 so unload happens before collision disappears.</p>
+<hr />
+<h2 id="streamspooler-coupling-formula">StreamSpooler Coupling Formula<a class="headerlink" href="#streamspooler-coupling-formula" title="Permanent link">&para;</a></h2>
+<p>When <code>auto_configure_radii_from_chunks = true</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="n">chunk_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">GridManager</span><span class="p">(</span><span class="n">stream</span><span class="w"> </span><span class="n">target</span><span class="p">)</span><span class="o">.</span><span class="n">get_stream_radius</span><span class="p">()</span>
+<span class="n">chunk_size_meters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">GameManager</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">farm</span><span class="o">.</span><span class="n">simulation_chunk_size_tiles</span>
+<span class="n">chunk_collision_edge</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">chunk_radius</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mf">0.5</span><span class="p">)</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="n">chunk_size_meters</span>
+
+<span class="k">if</span><span class="w"> </span><span class="n">auto_sync_terrain_collision_radius_from_chunks</span><span class="p">:</span>
+<span class="w">    </span><span class="n">terrain</span><span class="o">.</span><span class="n">collision_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="n">min_terrain_collision_radius_meters</span><span class="p">,</span>
+<span class="w">                                   </span><span class="nb">round</span><span class="p">(</span><span class="n">chunk_collision_edge</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">terrain_collision_padding_meters</span><span class="p">))</span>
+
+<span class="n">effective_collision_edge</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">min</span><span class="p">(</span><span class="n">chunk_collision_edge</span><span class="p">,</span><span class="w"> </span><span class="n">terrain</span><span class="o">.</span><span class="n">collision_radius</span><span class="p">)</span>
+<span class="n">unload_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="n">min_auto_unload_radius_meters</span><span class="p">,</span>
+<span class="w">                    </span><span class="n">effective_collision_edge</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">collision_edge_margin_meters</span><span class="p">)</span>
+<span class="n">load_radius</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">max</span><span class="p">(</span><span class="n">min_auto_load_radius_meters</span><span class="p">,</span>
+<span class="w">                  </span><span class="n">unload_radius</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">stream_hysteresis_meters</span><span class="p">)</span>
+</code></pre></div>
+<p>This keeps despawn/freeze bounded by available terrain collision.</p>
+<hr />
+<h2 id="critical-startup-sequence">Critical Startup Sequence<a class="headerlink" href="#critical-startup-sequence" title="Permanent link">&para;</a></h2>
+<p><code>MapManager.populate_world()</code> enforces this order:</p>
+<ol>
+<li>Spawn player and publish player transform to <code>GameManager.session.entities</code>.</li>
+<li>Ensure <code>WorldEntityContainer</code> exists.</li>
+<li>Ensure <code>StreamSpooler</code> node exists and prime it with current player position.</li>
+<li>Register map vehicles into <code>EntityManager</code>.</li>
+<li>Force <code>StreamSpooler.refresh_from_current_chunks("post_register_vehicles")</code>.</li>
+</ol>
+<p>This prevents startup race conditions where entities exist in data but were never queued for visual load.</p>
+<hr />
+<h2 id="uess-ownership-rule">UESS Ownership Rule<a class="headerlink" href="#uess-ownership-rule" title="Permanent link">&para;</a></h2>
+<p>Despawn only applies to UESS-owned views.</p>
+<ul>
+<li>Correct path: spawn/register entities through <code>EntityRegistry</code> + <code>EntityManager</code>.</li>
+<li>Incorrect path: instantiate raw vehicle scenes directly in the scene tree for gameplay entities.</li>
+</ul>
+<p>Scene-spawned vehicles bypass StreamSpooler ownership and therefore bypass UESS despawn guarantees.</p>
+<hr />
+<h2 id="streaming-groups-behavior">Streaming Groups Behavior<a class="headerlink" href="#streaming-groups-behavior" title="Permanent link">&para;</a></h2>
+<p>Group integrity is preserved during distance gating:</p>
+<ul>
+<li>Load a group if any member is inside load radius.</li>
+<li>Unload a group only if all members are outside unload radius.</li>
+<li>If the player is actively driving a vehicle, unload is blocked for that vehicle and all members of its streaming group.</li>
+</ul>
+<p>This prevents hitch-chain breakage at chunk/collision boundaries.</p>
+<hr />
+<h2 id="active-vehicle-safety-rules">Active Vehicle Safety Rules<a class="headerlink" href="#active-vehicle-safety-rules" title="Permanent link">&para;</a></h2>
+<p>To prevent camera-loss soft locks and stale-chunk despawns, runtime now enforces:</p>
+<ol>
+<li><code>EntityView3D.extract_data()</code> writes transforms through <code>EntityManager.update_entity_transform(...)</code>.</li>
+<li>Large movement deltas bypass sync throttle to force immediate chunk reassignment.</li>
+<li>During unload execution, a driven <code>Vehicle3D</code> is force-ejected synchronously before <code>queue_free()</code>.</li>
+<li>Spawn application is tree-safe: generic entities may pre-apply data before parenting only under identity parent transforms, while <code>Vehicle3D</code> always applies data after parenting.</li>
+</ol>
+<p>These rules protect both spatial indexing and player control continuity during aggressive streaming churn.</p>
+<hr />
+<h2 id="tuning-guidance">Tuning Guidance<a class="headerlink" href="#tuning-guidance" title="Permanent link">&para;</a></h2>
+<p>Increase safe far distance:</p>
+<ol>
+<li>Increase <code>streamed_chunk_radius</code> in <code>Scripts/farm/GridManager.gd</code>.</li>
+<li>Keep <code>auto_sync_terrain_collision_radius_from_chunks = true</code> in <code>StreamSpooler</code>.</li>
+<li>Increase <code>terrain_collision_padding_meters</code> slightly for faster vehicles.</li>
+<li>Keep <code>collision_edge_margin_meters</code> high enough that unload happens before collision cutoff.</li>
+</ol>
+<p>Reduce cost:</p>
+<ol>
+<li>Decrease <code>streamed_chunk_radius</code>.</li>
+<li>Decrease <code>terrain_collision_padding_meters</code>.</li>
+<li>Keep <code>stream_hysteresis_meters</code> large enough to avoid churn near edges.</li>
+</ol>
+<p>Manual mode (<code>auto_configure_radii_from_chunks = false</code>):</p>
+<ul>
+<li>Ensure <code>load_radius &lt; unload_radius</code>.</li>
+<li>Ensure <code>unload_radius</code> remains inside Terrain3D collision coverage.</li>
+</ul>
+<hr />
+<h2 id="troubleshooting">Troubleshooting<a class="headerlink" href="#troubleshooting" title="Permanent link">&para;</a></h2>
+<h3 id="vehicles-never-despawn">Vehicles never despawn<a class="headerlink" href="#vehicles-never-despawn" title="Permanent link">&para;</a></h3>
+<p>Check:</p>
+<ol>
+<li>Vehicle was created as UESS entity (not direct scene spawn).</li>
+<li><code>StreamSpooler</code> exists at runtime.</li>
+<li><code>WorldEntityContainer</code> exists at runtime.</li>
+<li><code>entity_registered</code> connection is active in <code>StreamSpooler</code>.</li>
+</ol>
+<h3 id="active-driven-vehicle-despawns-or-camera-is-lost">Active driven vehicle despawns or camera is lost<a class="headerlink" href="#active-driven-vehicle-despawns-or-camera-is-lost" title="Permanent link">&para;</a></h3>
+<p>Check:</p>
+<ol>
+<li><code>PlayerData.active_vehicle_id</code> is set while seated.</li>
+<li>Active vehicle and implement share the same <code>StreamingGroup</code> when attached.</li>
+<li><code>EntityView3D.extract_data()</code> routes through <code>EntityManager.update_entity_transform(...)</code>.</li>
+<li><code>Vehicle3D.force_eject()</code> is called before destruction in spooler unload path.</li>
+</ol>
+<h3 id="is_inside_tree-errors-during-spawn"><code>!is_inside_tree()</code> errors during spawn<a class="headerlink" href="#is_inside_tree-errors-during-spawn" title="Permanent link">&para;</a></h3>
+<p>Check:</p>
+<ol>
+<li><code>EntityView3D.apply_data()</code> does not read <code>global_position</code>/<code>global_transform</code> while node is outside tree.</li>
+<li><code>Vehicle3D</code> follows parent-first spawn (<code>add_child</code> before <code>apply_data</code>).</li>
+<li><code>Vehicle3D.reset_physics_state()</code> guards non-tree usage.</li>
+</ol>
+<h3 id="changing-chunk-radius-has-little-effect">Changing chunk radius has little effect<a class="headerlink" href="#changing-chunk-radius-has-little-effect" title="Permanent link">&para;</a></h3>
+<p>Check:</p>
+<ol>
+<li><code>auto_sync_terrain_collision_radius_from_chunks</code> is enabled.</li>
+<li>Terrain3D collision mode is enabled (dynamic/full game mode).</li>
+<li>Active camera is correctly bound to Terrain3D.</li>
+</ol>
+<hr />
+<h2 id="catch-up-reminder">Catch-Up Reminder<a class="headerlink" href="#catch-up-reminder" title="Permanent link">&para;</a></h2>
+<p>Unloaded entities remain in data and continue logically via catch-up processing when they return to active visual range.</p>
+<hr />
+<h2 id="saveload-coupling">Save/Load Coupling<a class="headerlink" href="#saveload-coupling" title="Permanent link">&para;</a></h2>
+<p>Streaming and persistence are explicitly coupled through <code>EventBus</code> + <code>SaveManager</code>:</p>
+<ol>
+<li><code>SaveManager.save_slot()</code> emits <code>pre_save_flush</code>.</li>
+<li><code>StreamSpooler._on_pre_save_flush()</code> runs <code>flush_active_views_to_data()</code> so serialized components include latest runtime transforms/state.</li>
+<li>During load, <code>SaveManager</code> temporarily disables streaming, clears runtime views, and starts a blackout window.</li>
+<li>After data hydration and chunk refresh, blackout is released after settle frames.</li>
+</ol>
+<p>This coupling is required to avoid stale pre-save transforms and to prevent load-frame physics instability.</p>
+<p>For full load contract details, see <a href="../../architecture/save_load_runtime/">Save/Load Runtime</a>.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 The OpenAcre Project
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

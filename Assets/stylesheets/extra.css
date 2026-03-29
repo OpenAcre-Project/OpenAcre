@@ -1,0 +1,9 @@
+/* Hide the "Made with Material for MkDocs" generator credit */
+.md-footer-meta__inner .md-typeset {
+  display: none;
+}
+
+/* Ensure our copyright notice is visible and centered/styled well if needed */
+.md-copyright {
+  display: block;
+}

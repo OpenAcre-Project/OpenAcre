@@ -1,0 +1,2866 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="OpenAcre is a hardcore, open-source farming and survival simulator built in Godot 4. The best realistic agricultural engine for systemic game design.">
+      
+      
+        <meta name="author" content="The OpenAcre Project">
+      
+      
+        <link rel="canonical" href="https://openacre-project.github.io/OpenAcre/dev_log/plow_attachment/">
+      
+      
+        <link rel="prev" href="../../dev/addon_patches/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Plow Attachment - OpenAcre Documentation</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Outfit:300,300i,400,400i,700,700i%7CFira+Code:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Outfit";--md-code-font:"Fira Code"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../Assets/stylesheets/extra.css">
+    
+      <link rel="stylesheet" href="../../stylesheets/technical-docs.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="cyan">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#plow-attachment-system-implementation-history" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="OpenAcre Documentation" class="md-header__button md-logo" aria-label="OpenAcre Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            OpenAcre Documentation
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Plow Attachment
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="cyan"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+          <a href="javascript:void(0)" class="md-search__icon md-icon" title="Share" aria-label="Share" data-clipboard data-clipboard-text="" data-md-component="search-share" tabindex="-1">
+            
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9a3 3 0 0 0-3 3 3 3 0 0 0 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.15c-.05.21-.08.43-.08.66 0 1.61 1.31 2.91 2.92 2.91s2.92-1.3 2.92-2.91A2.92 2.92 0 0 0 18 16.08"/></svg>
+          </a>
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../architecture/overview/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Architecture
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../systems/vehicles/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Systems
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../rendering/terrain3d_rendering/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Visualization
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../dev/developer_console/" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Developer
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
+          
+  
+  
+    
+  
+  Dev Log
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="OpenAcre Documentation" class="md-nav__button md-logo" aria-label="OpenAcre Documentation" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    OpenAcre Documentation
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Architecture
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Architecture
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/overview/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/core_runtime/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Core Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/save_load_runtime/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Save/Load Runtime
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/ui_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    UI Architecture
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/map_fields_architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Map Fields
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Systems
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Systems
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/vehicles/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vehicles
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/camera/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Camera
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/items_and_inventory/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Items & Inventory
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../systems/day_night_cycle/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Day/Night Cycle
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Visualization
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Visualization
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rendering/terrain3d_rendering/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Terrain3D
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../rendering/chunk_system/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Chunk System
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Developer
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Developer
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/developer_console/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Console
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/save_load_qa/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Save/Load QA
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/advanced_attachments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Vehicle Attachments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../dev/addon_patches/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Addon Patches
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+      
+        
+      
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dev Log
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Dev Log
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plow Attachment
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Plow Attachment
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-summary-of-trials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Summary of Trials
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem Statement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-1-generic6dofjoint3d-global_transform-teleport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 1: Generic6DOFJoint3D + global_transform Teleport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 1: Generic6DOFJoint3D + global_transform Teleport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-2-freezeunfreeze-global_transform-teleport-deferred-joint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 2: Freeze/Unfreeze + global_transform Teleport + Deferred Joint
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 2: Freeze/Unfreeze + global_transform Teleport + Deferred Joint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-3-physicsserver3dbody_set_state-teleport-direct-joint-binding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 3: PhysicsServer3D.body_set_state() Teleport + Direct Joint Binding
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 3: PhysicsServer3D.body_set_state() Teleport + Direct Joint Binding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-4-working-kinematic-follow-via-physicsserver3d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 4 (Working): Kinematic Follow via PhysicsServer3D
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 4 (Working): Kinematic Follow via PhysicsServer3D">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did-v31-sync-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did (v3.1 Sync Fix)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-4-working-reparenting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 4 (WORKING): Reparenting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 4 (WORKING): Reparenting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-5-reparenting-raiselower-sub-attempts-all-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 5: Reparenting — Raise/Lower Sub-Attempts (ALL FAILED)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 5: Reparenting — Raise/Lower Sub-Attempts (ALL FAILED)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sub-attempt-5a-reparent-to-rearhitch-body_set_state-after-pose-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-attempt 5a: Reparent to RearHitch + body_set_state() after pose change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sub-attempt-5b-reparent-to-attachmentsockets-plain-node3d-instead-of-rearhitch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-attempt 5b: Reparent to AttachmentSockets (plain Node3D) instead of RearHitch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sub-attempt-5c-disable-collision-shapes-on-implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-attempt 5c: Disable collision shapes on implement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-shared-across-all-sub-attempts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause (shared across all sub-attempts)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-6-current-reparenting-remove-from-physics-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 6 (Current): Reparenting + Remove from Physics Space
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 6 (Current): Reparenting + Remove from Physics Space">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-insight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Insight
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-failed-raiselower" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: FAILED (Raise/Lower)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-7-precise-node3d-fix-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 7: Precise Node3D Fix (Success)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 7: Precise Node3D Fix (Success)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-failed-physics-server-reversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: FAILED (Physics Server Reversion)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-8-direct-hitch-reparenting-the-real-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 8: Direct Hitch Reparenting (The Real Fix)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 8: Direct Hitch Reparenting (The Real Fix)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-failed-physics-engine-traversal-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: FAILED (Physics Engine Traversal Bug)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-9-no-reparenting-per-frame-global-transform-sync-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 9: No Reparenting + Per-Frame Global Transform Sync (Success)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 9: No Reparenting + Per-Frame Global Transform Sync (Success)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: SUCCESS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#quick-summary-of-trials" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quick Summary of Trials
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#problem-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Problem Statement
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-1-generic6dofjoint3d-global_transform-teleport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 1: Generic6DOFJoint3D + global_transform Teleport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 1: Generic6DOFJoint3D + global_transform Teleport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-2-freezeunfreeze-global_transform-teleport-deferred-joint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 2: Freeze/Unfreeze + global_transform Teleport + Deferred Joint
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 2: Freeze/Unfreeze + global_transform Teleport + Deferred Joint">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-3-physicsserver3dbody_set_state-teleport-direct-joint-binding" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 3: PhysicsServer3D.body_set_state() Teleport + Direct Joint Binding
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 3: PhysicsServer3D.body_set_state() Teleport + Direct Joint Binding">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-4-working-kinematic-follow-via-physicsserver3d" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 4 (Working): Kinematic Follow via PhysicsServer3D
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 4 (Working): Kinematic Follow via PhysicsServer3D">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Functions
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did-v31-sync-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did (v3.1 Sync Fix)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happened_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happened
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-learning_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Learning
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-4-working-reparenting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 4 (WORKING): Reparenting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 4 (WORKING): Reparenting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-5-reparenting-raiselower-sub-attempts-all-failed" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 5: Reparenting — Raise/Lower Sub-Attempts (ALL FAILED)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 5: Reparenting — Raise/Lower Sub-Attempts (ALL FAILED)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#sub-attempt-5a-reparent-to-rearhitch-body_set_state-after-pose-change" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-attempt 5a: Reparent to RearHitch + body_set_state() after pose change
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sub-attempt-5b-reparent-to-attachmentsockets-plain-node3d-instead-of-rearhitch" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-attempt 5b: Reparent to AttachmentSockets (plain Node3D) instead of RearHitch
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sub-attempt-5c-disable-collision-shapes-on-implement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sub-attempt 5c: Disable collision shapes on implement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause-shared-across-all-sub-attempts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause (shared across all sub-attempts)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-6-current-reparenting-remove-from-physics-space" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 6 (Current): Reparenting + Remove from Physics Space
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 6 (Current): Reparenting + Remove from Physics Space">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#key-insight" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Key Insight
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-failed-raiselower" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: FAILED (Raise/Lower)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#root-cause_4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Root Cause
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-7-precise-node3d-fix-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 7: Precise Node3D Fix (Success)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 7: Precise Node3D Fix (Success)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_6" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-failed-physics-server-reversion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: FAILED (Physics Server Reversion)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-8-direct-hitch-reparenting-the-real-fix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 8: Direct Hitch Reparenting (The Real Fix)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 8: Direct Hitch Reparenting (The Real Fix)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_7" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-failed-physics-engine-traversal-bug" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: FAILED (Physics Engine Traversal Bug)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#approach-9-no-reparenting-per-frame-global-transform-sync-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Approach 9: No Reparenting + Per-Frame Global Transform Sync (Success)
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Approach 9: No Reparenting + Per-Frame Global Transform Sync (Success)">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#what-we-did_8" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What We Did
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#why-this-might-works_3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this might works
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#status-success" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Status: SUCCESS
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="plow-attachment-system-implementation-history">Plow Attachment System — Implementation History<a class="headerlink" href="#plow-attachment-system-implementation-history" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Purpose:</strong> This document records every approach tried for attaching implements (plow) to the tractor, what was observed, and why each failed. Use this to avoid repeating failed approaches.</p>
+</blockquote>
+<hr />
+<h2 id="quick-summary-of-trials">Quick Summary of Trials<a class="headerlink" href="#quick-summary-of-trials" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th style="text-align: center;">#</th>
+<th>Approach</th>
+<th>Result</th>
+<th>Key Takeaway / Why it Failed</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align: center;">1</td>
+<td><code>Generic6DOFJoint3D</code> + <code>global_transform</code></td>
+<td>❌ <strong>FAILED</strong></td>
+<td><code>global_transform</code> is unreliable on RigidBodies; Joint failed to bind.</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td>Freeze/Unfreeze + Teleport</td>
+<td>❌ <strong>FAILED</strong></td>
+<td>Physics server reverts to pre-freeze transform on unfreeze.</td>
+</tr>
+<tr>
+<td style="text-align: center;">3</td>
+<td><code>body_set_state</code> + Direct Joint</td>
+<td>❌ <strong>FAILED</strong></td>
+<td>Joint between <code>AnimatableBody3D</code> and <code>RigidBody3D</code> had zero effect.</td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td>Kinematic Follow (<code>body_set_state</code>)</td>
+<td>❌ <strong>FAILED</strong></td>
+<td>Manual sync in <code>_physics_process</code> drifts at high speeds.</td>
+</tr>
+<tr>
+<td style="text-align: center;">4</td>
+<td>Reparenting (Driving follow)</td>
+<td>✅ <strong>SUCCESS</strong></td>
+<td>Engine-native transform propagation is perfectly stable for driving.</td>
+</tr>
+<tr>
+<td style="text-align: center;">5</td>
+<td>Reparenting (Raise/Lower)</td>
+<td>❌ <strong>FAILED</strong></td>
+<td><code>RigidBody3D</code> transform is always owned/reverted by physics server.</td>
+</tr>
+<tr>
+<td style="text-align: center;">6</td>
+<td>Remove from Physics Space</td>
+<td>❌ <strong>FAILED</strong></td>
+<td><code>AnimatableBody3D</code> local transform corrupted by <code>sync_to_physics</code>.</td>
+</tr>
+<tr>
+<td style="text-align: center;">7</td>
+<td>Precise Node3D Fix</td>
+<td>❌ <strong>FAILED</strong></td>
+<td>Physics server reverts manual transform writes even if body is unspaced.</td>
+</tr>
+<tr>
+<td style="text-align: center;">8</td>
+<td>Direct Hitch Reparenting</td>
+<td>❌ <strong>FAILED</strong></td>
+<td>Physics engine traversal bug: child RigidBodies of moving RigidBodies fail.</td>
+</tr>
+<tr>
+<td style="text-align: center;">9</td>
+<td>No Reparenting + Per-Frame Sync</td>
+<td>✅ <strong>SUCCESS</strong></td>
+<td><strong>Architectural Winner.</strong> Outside hierarchy = no engine interference.</td>
+</tr>
+<tr>
+<td style="text-align: center;">10</td>
+<td><strong>HitchRay Float Mechanic</strong></td>
+<td>✅ <strong>SUCCESS</strong></td>
+<td><strong>Active Solution.</strong> Adds terrain-aware vertical oscillation.</td>
+</tr>
+</tbody>
+</table>
+<div class="admonition tip">
+<p class="admonition-title">Current Implementation</p>
+<p>The final, optimized version uses Approach 9 for stability and Approach 10 for realism. For the streamlined guide, see <a href="../../dev/advanced_attachments/">Advanced Attachments &amp; Float Mechanics</a>.</p>
+</div>
+<hr />
+<h2 id="problem-statement">Problem Statement<a class="headerlink" href="#problem-statement" title="Permanent link">&para;</a></h2>
+<p>When the player presses the "Attach Implement" key while the tractor is near the plow, the plow should:</p>
+<ol>
+<li>Snap to the tractor's rear hitch point</li>
+<li>Stay rigidly connected while driving</li>
+<li>Detach cleanly when requested</li>
+</ol>
+<p>The <code>PlowAttachment</code> is a <code>RigidBody3D</code> (100kg, extends <code>Implement3D</code>). The <code>Tractor</code> extends <code>Vehicle3D</code> which extends <code>Vehicle</code> (GEVP RigidBody3D). The <code>RearHitch</code> is an <code>AnimatableBody3D</code> child of the tractor with a <code>HitchPoint</code> <code>Marker3D</code>.</p>
+<hr />
+<h2 id="approach-1-generic6dofjoint3d-global_transform-teleport">Approach 1: Generic6DOFJoint3D + <code>global_transform</code> Teleport<a class="headerlink" href="#approach-1-generic6dofjoint3d-global_transform-teleport" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did">What We Did<a class="headerlink" href="#what-we-did" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Created a <code>Generic6DOFJoint3D</code> dynamically in <code>Vehicle3D._ready()</code></li>
+<li><code>node_a</code> = RearHitch (AnimatableBody3D), <code>node_b</code> = empty until attachment</li>
+<li>Linear limits disabled (= locked), angular limits enabled (±45°/±60°/±5°)</li>
+<li>On attach: set <code>implement.global_transform</code> to hitch position, set <code>node_b</code> via <code>set_deferred()</code></li>
+</ul>
+<h3 id="what-happened">What Happened<a class="headerlink" href="#what-happened" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>FRAME 1 =&gt; Pos: (105.6554, 29.33351, 127.6489), Vel: (0.078, 0.102, 2.239)
+FRAME 2 =&gt; Pos: (105.6567, 29.33249, 127.6861), Vel: (0.079, -0.061, 2.235)
+FRAME 3 =&gt; Pos: (105.658, 29.32874, 127.7233),  Vel: (0.078, -0.225, 2.231)
+...
+10 sec later =&gt; Pos Y = -331.28, Vel Y = -61.94  (freefall)
+</code></pre></div>
+<h3 id="root-cause">Root Cause<a class="headerlink" href="#root-cause" title="Permanent link">&para;</a></h3>
+<p>Two issues stacked:</p>
+<ol>
+<li><strong><code>set_deferred("node_b", ...)</code></strong> means the joint doesn't bind until the next idle frame → 1-2 physics frames where the plow is unconstrained</li>
+<li><strong><code>global_transform = ...</code></strong> on a RigidBody3D does NOT reliably update the physics server (Godot docs explicitly warn against this)</li>
+</ol>
+<h3 id="key-learning">Key Learning<a class="headerlink" href="#key-learning" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Setting <code>global_transform</code> on a RigidBody3D leads to "unpredictable behaviors" per Godot docs. The physics server keeps its own copy and overwrites the node.</p>
+</blockquote>
+<hr />
+<h2 id="approach-2-freezeunfreeze-global_transform-teleport-deferred-joint">Approach 2: Freeze/Unfreeze + <code>global_transform</code> Teleport + Deferred Joint<a class="headerlink" href="#approach-2-freezeunfreeze-global_transform-teleport-deferred-joint" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_1">What We Did<a class="headerlink" href="#what-we-did_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Before teleporting: <code>rb.freeze = true</code>, <code>rb.freeze_mode = FREEZE_MODE_KINEMATIC</code></li>
+<li>Teleport via <code>global_transform</code></li>
+<li>Set <code>node_b</code> via <code>set_deferred()</code></li>
+<li>After joint binds: <code>call_deferred("_on_hitch_joint_ready")</code> which sets <code>freeze = false</code></li>
+</ul>
+<h3 id="what-happened_1">What Happened<a class="headerlink" href="#what-happened_1" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>FRAME 1 (frozen): Pos Z = 125.592 (at hitch) ✓, sleeping: true
+Joint bound, unfrozen: Pos Z = 125.592 ✓
+FRAME 2 (unfrozen): Pos Z = 127.055 ← SNAPPED BACK to pre-teleport position!
+FRAME 3-5: stays at Z = 127.055, vel ≈ 0 (stuck at original position)
+</code></pre></div>
+<h3 id="root-cause_1">Root Cause<a class="headerlink" href="#root-cause_1" title="Permanent link">&para;</a></h3>
+<p>When <code>freeze = true</code> (KINEMATIC mode), <code>global_transform</code> appears to update the node's position, but the <strong>physics server reverts to the pre-freeze position</strong> when <code>freeze</code> is set back to <code>false</code>. The physics server has its own internal state that <code>global_transform</code> doesn't update.</p>
+<h3 id="key-learning_1">Key Learning<a class="headerlink" href="#key-learning_1" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Freezing → moving → unfreezing a RigidBody3D does NOT teleport it. The physics server remembers the old position.</p>
+</blockquote>
+<hr />
+<h2 id="approach-3-physicsserver3dbody_set_state-teleport-direct-joint-binding">Approach 3: <code>PhysicsServer3D.body_set_state()</code> Teleport + Direct Joint Binding<a class="headerlink" href="#approach-3-physicsserver3dbody_set_state-teleport-direct-joint-binding" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_2">What We Did<a class="headerlink" href="#what-we-did_2" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Teleport via <code>PhysicsServer3D.body_set_state(rb.get_rid(), BODY_STATE_TRANSFORM, desired_xform)</code> — the documented correct way</li>
+<li>Removed <code>set_deferred</code>: set <code>hitch_joint.node_b = b_path</code> directly (we're in <code>_input</code>, not in physics)</li>
+<li>No freeze/unfreeze — left implement as dynamic RigidBody3D</li>
+</ul>
+<h3 id="what-happened_2">What Happened<a class="headerlink" href="#what-happened_2" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>Post-attach cross-check: Node pos: (105.47, 30.15, 129.37) | PhysicsServer pos: (105.58, 29.32, 128.10) | Match: false
+FRAME 1:  NodePos = (105.58, 29.32, 128.10) = ServerPos ✓ (teleport worked!)
+FRAME 2:  Vel Y = -0.041  (gravity starting)
+FRAME 5:  Vel Y = -0.531  (accelerating downward)
+FRAME 10: Vel Y = -1.340  (freefall)
+FRAME 15: Vel Y = -2.143  (freefall)
+10 sec:   Pos Y = -331, Vel Y = -61.93  (terminal freefall)
+</code></pre></div>
+<h3 id="root-cause_2">Root Cause<a class="headerlink" href="#root-cause_2" title="Permanent link">&para;</a></h3>
+<p>The <code>PhysicsServer3D.body_set_state()</code> teleport <strong>worked perfectly</strong> (NodePos = ServerPos from frame 1). However, the <code>Generic6DOFJoint3D</code> had <strong>absolutely zero constraining effect</strong>. The plow was in pure gravitational freefall despite the joint being configured with valid <code>node_a</code> and <code>node_b</code>.</p>
+<h3 id="key-learning_2">Key Learning<a class="headerlink" href="#key-learning_2" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><code>Generic6DOFJoint3D</code> between an <code>AnimatableBody3D</code> (RearHitch, collision_layer=0) and a <code>RigidBody3D</code> (PlowAttachment) does NOT produce any constraint in Godot 4.6.1. The joint exists in the node tree but has no physics effect. Possible causes: AnimatableBody3D with zero collision layers, or internal Godot limitation with dynamically created joints between these body types.</p>
+</blockquote>
+<hr />
+<h2 id="approach-4-working-kinematic-follow-via-physicsserver3d">Approach 4 (Working): Kinematic Follow via <code>PhysicsServer3D</code><a class="headerlink" href="#approach-4-working-kinematic-follow-via-physicsserver3d" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_3">What We Did<a class="headerlink" href="#what-we-did_3" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Removed <code>Generic6DOFJoint3D</code> entirely</strong> — no joint creation, no joint binding</li>
+<li>On attach: freeze implement as <code>FREEZE_MODE_KINEMATIC</code>, teleport via <code>PhysicsServer3D.body_set_state()</code></li>
+<li><strong>Every <code>_physics_process</code> frame</strong>: compute desired transform from hitch point, move implement via <code>PhysicsServer3D.body_set_state()</code></li>
+<li>On detach: unfreeze, inherit tractor velocity</li>
+</ul>
+<h3 id="key-functions">Key Functions<a class="headerlink" href="#key-functions" title="Permanent link">&para;</a></h3>
+<ul>
+<li><code>_compute_implement_world_transform()</code> — calculates world transform aligned to hitch</li>
+<li><code>_sync_attached_implement_to_hitch()</code> — called each <code>_physics_process</code>, moves the implement</li>
+</ul>
+<h3 id="what-we-did-v31-sync-fix">What We Did (v3.1 Sync Fix)<a class="headerlink" href="#what-we-did-v31-sync-fix" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Used <code>PhysicsServer3D.body_get_state(tractor_rid, BODY_STATE_TRANSFORM)</code> to get the "true" tractor position.</li>
+<li>Manually calculated the hitch world position and moved the implement via <code>body_set_state</code> every <code>_physics_process</code>.</li>
+</ul>
+<h3 id="what-happened_3">What Happened<a class="headerlink" href="#what-happened_3" title="Permanent link">&para;</a></h3>
+<div class="highlight"><pre><span></span><code>FRAME 1-15: Almost perfect follow ✓
+High Speed (30km/h+): Drifts by 5-10 meters.
+10 Seconds later: ImplementPos: (338, ...), VehiclePos: (384, ...) -&gt; 46 meter gap! ❌
+</code></pre></div>
+<h3 id="root-cause_3">Root Cause<a class="headerlink" href="#root-cause_3" title="Permanent link">&para;</a></h3>
+<p>Directly setting <code>body_set_state</code> every frame competes with the Node tree's automatic <code>sync_to_physics</code> behavior for kinematic bodies. At high speeds or under load, the GEVP physics engine moves the tractor far away between frames, and the manual sync in <code>_physics_process</code> is always slightly out of phase with the engine's internal transform propagation.</p>
+<h3 id="key-learning_3">Key Learning<a class="headerlink" href="#key-learning_3" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>Manual transform syncing in <code>_physics_process</code> is inherently fragile when parent and child are both physics bodies managed by different systems (GEVP vs manual).</p>
+</blockquote>
+<hr />
+<h2 id="approach-4-working-reparenting">Approach 4 (WORKING): Reparenting<a class="headerlink" href="#approach-4-working-reparenting" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_4">What We Did<a class="headerlink" href="#what-we-did_4" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Freeze as kinematic</strong> (<code>freeze_mode = KINEMATIC</code>, <code>freeze = true</code>).</li>
+<li><strong>Reparent</strong> the implement node to be a child of the <code>RearHitch</code> node at runtime.</li>
+<li><strong><code>reparent(new_parent, true)</code></strong>: The <code>true</code> argument (keep_global_transform) ensures it doesn't jump during handoff.</li>
+<li><strong>Zero code sync</strong>: Remove all <code>_physics_process</code> sync math. Godot's engine handles the parent-child transform hierarchy natively.</li>
+</ul>
+<h3 id="why-this-might-works">Why this might works<a class="headerlink" href="#why-this-might-works" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Engine-Native</strong>: Parent-child transform propagation is calculated by Godot's C++ core at the exact right moment in the frame lifecycle.</li>
+<li><strong>Rigorously Tied</strong>: If the hitch node moves 1cm, the child moves 1cm instantly with zero lag.</li>
+<li><strong>Automatic Y-Offset</strong>: Raising/lowering the hitch point automatically moves the plow child.</li>
+</ul>
+<hr />
+<h2 id="approach-5-reparenting-raiselower-sub-attempts-all-failed">Approach 5: Reparenting — Raise/Lower Sub-Attempts (ALL FAILED)<a class="headerlink" href="#approach-5-reparenting-raiselower-sub-attempts-all-failed" title="Permanent link">&para;</a></h2>
+<p>Approach 4 (Reparenting) solved the <strong>driving follow</strong> problem perfectly. However, <strong>raise/lower (X key)</strong> did not work — the plow stayed at the same Y position relative to the tractor regardless of hitch state.</p>
+<h3 id="sub-attempt-5a-reparent-to-rearhitch-body_set_state-after-pose-change">Sub-attempt 5a: Reparent to RearHitch + <code>body_set_state()</code> after pose change<a class="headerlink" href="#sub-attempt-5a-reparent-to-rearhitch-body_set_state-after-pose-change" title="Permanent link">&para;</a></h3>
+<ul>
+<li>After <code>_apply_hitch_pose()</code> changed <code>rear_hitch.position.y</code>, called <code>PhysicsServer3D.body_set_state()</code> with the implement's updated <code>global_transform</code>.</li>
+<li><strong>Result</strong>: Jitter for 1 frame, then reverted to old position.</li>
+</ul>
+<h3 id="sub-attempt-5b-reparent-to-attachmentsockets-plain-node3d-instead-of-rearhitch">Sub-attempt 5b: Reparent to <code>AttachmentSockets</code> (plain Node3D) instead of <code>RearHitch</code><a class="headerlink" href="#sub-attempt-5b-reparent-to-attachmentsockets-plain-node3d-instead-of-rearhitch" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Changed reparent target from <code>RearHitch</code> (AnimatableBody3D) to <code>AttachmentSockets</code> (plain Node3D).</li>
+<li>Added <code>_align_implement_to_hitch()</code> to compute <code>rear_hitch.transform * HitchPoint.transform.affine_inverse()</code>.</li>
+<li>Called <code>_align_implement_to_hitch()</code> from <code>_toggle_hitch()</code> after pose change.</li>
+<li><strong>Result</strong>: No change. Physics server still overrides node-level transform.</li>
+</ul>
+<h3 id="sub-attempt-5c-disable-collision-shapes-on-implement">Sub-attempt 5c: Disable collision shapes on implement<a class="headerlink" href="#sub-attempt-5c-disable-collision-shapes-on-implement" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Set <code>CollisionShape3D.disabled = true</code> on all implement children when attached.</li>
+<li><strong>Result</strong>: No change. Physics server still manages the body's transform even without collision shapes.</li>
+</ul>
+<h3 id="root-cause-shared-across-all-sub-attempts">Root Cause (shared across all sub-attempts)<a class="headerlink" href="#root-cause-shared-across-all-sub-attempts" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>A <code>RigidBody3D</code> — even frozen kinematic, even with disabled collision shapes, even reparented to a plain Node3D — has its transform <strong>owned by the physics server</strong>. Node tree <code>transform =</code> changes are silently overridden. No amount of freezing, collision disabling, or reparenting changes this.</p>
+</blockquote>
+<hr />
+<h2 id="approach-6-current-reparenting-remove-from-physics-space">Approach 6 (Current): Reparenting + Remove from Physics Space<a class="headerlink" href="#approach-6-current-reparenting-remove-from-physics-space" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_5">What We Did<a class="headerlink" href="#what-we-did_5" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Froze implement as kinematic</li>
+<li><strong><code>PhysicsServer3D.body_set_space(rb.get_rid(), RID())</code></strong> — removes the body from the physics world <strong>entirely</strong></li>
+<li>Reparented to <code>AttachmentSockets</code> (plain Node3D)</li>
+<li><code>_align_implement_to_hitch()</code> computes local transform from <code>rear_hitch.transform</code></li>
+<li>On toggle hitch (X): <code>_apply_hitch_pose()</code> changes <code>rear_hitch.position.y</code>, then <code>_align_implement_to_hitch()</code> recalculates</li>
+<li>On detach: <code>PhysicsServer3D.body_set_space(rb.get_rid(), get_world_3d().space)</code> restores the body + <code>body_set_state()</code> teleports it to current <code>global_transform</code></li>
+</ul>
+<h3 id="key-insight">Key Insight<a class="headerlink" href="#key-insight" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p><code>body_set_space(rid, RID())</code> is the <strong>only</strong> way to make the physics server release ownership of a RigidBody3D's transform. After this call, the node is purely visual — transform changes via the node tree work exactly as they do for a plain Node3D.</p>
+</blockquote>
+<h3 id="status-failed-raiselower">Status: FAILED (Raise/Lower)<a class="headerlink" href="#status-failed-raiselower" title="Permanent link">&para;</a></h3>
+<p>Driving follow was perfect, but the plow would not translate vertically when pressing X. </p>
+<h3 id="root-cause_4">Root Cause<a class="headerlink" href="#root-cause_4" title="Permanent link">&para;</a></h3>
+<p>Debug logs revealed that <code>rear_hitch.transform.origin</code> was being corrupted by <code>AnimatableBody3D.sync_to_physics</code>. When the tractor moved, X and Z coordinates in the local transform would shift by meters even though only Y was being modified by code.</p>
+<h2 id="approach-7-precise-node3d-fix-success">Approach 7: Precise Node3D Fix (Success)<a class="headerlink" href="#approach-7-precise-node3d-fix-success" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_6">What We Did<a class="headerlink" href="#what-we-did_6" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Scene Change</strong>: Converted <code>RearHitch</code> from <code>AnimatableBody3D</code> to a plain <code>Node3D</code>. Removed its <code>CollisionShape3D</code> and <code>HitchJoint</code>.</li>
+<li><strong>Script Simplification</strong>: Updated <code>Vehicle3D.gd</code> to treat <code>rear_hitch</code> as a <code>Node3D</code>. Simplified <code>_align_implement_to_hitch</code> to use the hitch's <code>transform</code> directly, as it is no longer corrupted by physics synchronization.</li>
+<li><strong>Plowing Logic Fix</strong>: Updated <code>PlowAttachment.gd</code> to use the attached vehicle's <code>linear_velocity</code> for movement detection, since the plow itself is removed from physics space while attached.</li>
+</ul>
+<h3 id="why-this-might-works_1">Why this might works<a class="headerlink" href="#why-this-might-works_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Eliminating Corruption</strong>: <code>AnimatableBody3D</code> with <code>sync_to_physics</code> was the source of transform jitter and drift. A plain <code>Node3D</code> is 100% stable in the node hierarchy.</li>
+<li><strong>Authoritative Transforms</strong>: By removing the implement from physics space and using a stable <code>Node3D</code> parent/reference, the engine-native transform propagation works perfectly.</li>
+<li><strong>Velocity Inheritance</strong>: Explicitly checking the vehicle's velocity ensures that implements can still perform speed-based logic (like plowing) even when they aren't technically "moving" in the physics server's eyes.</li>
+</ul>
+<h3 id="status-failed-physics-server-reversion">Status: FAILED (Physics Server Reversion)<a class="headerlink" href="#status-failed-physics-server-reversion" title="Permanent link">&para;</a></h3>
+<p>Even though the alignment math was correct and <code>rear_hitch.position.y</code> was changing, the implement's <code>global_position</code> snapped back to the base <code>0.5</code> offset when the tractor moved. This is because a <code>RigidBody3D</code> (even when frozen and removed from physics space via <code>body_set_space(..., RID())</code>) still attempts to sync its local <code>transform</code> from the physics server caching, rejecting our <code>implement.transform = ...</code> manual overrides during raise/lower.</p>
+<hr />
+<h2 id="approach-8-direct-hitch-reparenting-the-real-fix">Approach 8: Direct Hitch Reparenting (The Real Fix)<a class="headerlink" href="#approach-8-direct-hitch-reparenting-the-real-fix" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_7">What We Did<a class="headerlink" href="#what-we-did_7" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>Direct Child</strong>: Changed <code>_attach_implement_simple</code> to reparent the implement <strong>directly</strong> to the <code>rear_hitch</code> (Node3D), rather than to its static parent <code>AttachmentSockets</code>.</li>
+<li><strong>Zero Realignment</strong>: Removed the <code>_align_implement_to_hitch</code> call from <code>_toggle_hitch</code>. Since the implement is now a direct child of the moving piece (<code>rear_hitch</code>), raising or lowering the hitch natively moves the child without EVER altering the child's local <code>transform</code>.</li>
+<li><strong>Immediate Server Sync</strong>: Added a single <code>PhysicsServer3D.body_set_state</code> call inside <code>_align_implement_to_hitch</code> to definitively lock in the initial relative alignment when attaching.</li>
+</ul>
+<h3 id="why-this-might-works_2">Why this might works<a class="headerlink" href="#why-this-might-works_2" title="Permanent link">&para;</a></h3>
+<p>Godot's physics server aggressively reverts manual <code>transform = ...</code> writes to frozen <code>RigidBody3D</code> nodes over time because it maintains its own state cache. However, Godot <strong>fully respects</strong> global transform changes that cascade down naturally from a node's parent moving. By making the implement a child of the <code>Node3D</code> hitch, its local <code>transform</code> remains static forever. The hitch moves, the node hierarchy propagates the movement, and the physics server never fights it because the implement's local <code>transform</code> never mutates.</p>
+<h3 id="status-failed-physics-engine-traversal-bug">Status: FAILED (Physics Engine Traversal Bug)<a class="headerlink" href="#status-failed-physics-engine-traversal-bug" title="Permanent link">&para;</a></h3>
+<p>Even when reparented directly to the <code>rear_hitch</code>, Godot's physics engine has a known issue where <code>RigidBody3D</code> nodes (even when frozen and removed from physics space via <code>body_set_space(RID())</code>) do NOT behave correctly when they are descendants of a moving <code>RigidBody3D</code> (such as the <code>Vehicle3D</code> tractor). The physics engine continues to perform internal transform propagation/sync on any descendant <code>RigidBody3D</code>, completely overriding the parent-driven global transform at runtime.</p>
+<hr />
+<h2 id="approach-9-no-reparenting-per-frame-global-transform-sync-success">Approach 9: No Reparenting + Per-Frame Global Transform Sync (Success)<a class="headerlink" href="#approach-9-no-reparenting-per-frame-global-transform-sync-success" title="Permanent link">&para;</a></h2>
+<h3 id="what-we-did_8">What We Did<a class="headerlink" href="#what-we-did_8" title="Permanent link">&para;</a></h3>
+<ul>
+<li><strong>No Reparenting</strong>: Modified <code>_attach_implement_simple</code> to keep the implement in the scene root. It is NEVER made a child of the <code>Vehicle3D</code> or its <code>RearHitch</code>.</li>
+<li><strong>Space Removal</strong>: Retained the <code>freeze</code> and <code>body_set_space(RID())</code> calls to fully release physics engine ownership of the node.</li>
+<li><strong>Manual Sync</strong>: Added a new method <code>_sync_implement_transform()</code> that accurately calculates the world transform from the hitch point.</li>
+<li><strong>Per-Frame Enforcement</strong>: Called <code>_sync_implement_transform()</code> inside the vehicle's <code>_physics_process</code> (every frame) and instantly on <code>_toggle_hitch()</code> to enforce the positional lock.</li>
+</ul>
+<h3 id="why-this-might-works_3">Why this might works<a class="headerlink" href="#why-this-might-works_3" title="Permanent link">&para;</a></h3>
+<p>By keeping the frozen <code>RigidBody3D</code> completely OUTSIDE the vehicle's node hierarchy, we bypass Godot's buggy descendant-transform-override logic entirely. Since it is removed from the physics space, the node-level <code>global_transform</code> assignment in <code>_physics_process</code> sticks perfectly. There is no physics engine fighting, no snap-back, and no drift at any speed.</p>
+<h3 id="status-success">Status: SUCCESS<a class="headerlink" href="#status-success" title="Permanent link">&para;</a></h3>
+<p>This is the proven pattern for "pick up / carried objects" in Godot.</p>
+<blockquote>
+<p><strong>Note:</strong> The final, optimized version of this system utilizes a <code>RayCast3D</code> (HitchRay) to seamlessly handle ground collision and mathematical floating. For details on the streamlined, active implementation, please read: <a href="../../dev/advanced_attachments/">Advanced Attachments &amp; Float Mechanics</a>.</p>
+</blockquote>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+  <script>var tabs=__md_get("__tabs");if(Array.isArray(tabs))e:for(var set of document.querySelectorAll(".tabbed-set")){var labels=set.querySelector(".tabbed-labels");for(var tab of tabs)for(var label of labels.getElementsByTagName("label"))if(label.innerText.trim()===tab){var input=document.getElementById(label.htmlFor);input.checked=!0;continue e}}</script>
+
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+    <div class="md-copyright__highlight">
+      Copyright &copy; 2026 The OpenAcre Project
+    </div>
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "navigation.tracking", "navigation.expand", "navigation.indexes", "search.suggest", "search.highlight", "search.share", "content.code.copy", "content.code.annotate", "content.tabs.link"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="../../javascripts/mathjax.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

@@ -127,12 +127,18 @@ func _refresh_text() -> void:
 	var veh_line := "Vehicle [None]"
 	var active_veh_id := player_data.active_vehicle_id if player_data else &""
 	if active_veh_id != &"":
-		var v_data := GameManager.session.entities.get_vehicle(active_veh_id)
-		var tank_info := ""
-		for t_id: StringName in v_data.tanks:
-			var tank: BulkTankData = v_data.tanks[t_id]
-			tank_info += " %s: %.1f/%.1f L" % [t_id, tank.current_liters, tank.max_volume]
-		veh_line = "Vehicle  id=%s  mass=%.0f kg %s" % [active_veh_id, v_data.get_total_vehicle_mass(), tank_info]
+		var v_data: EntityData = GameManager.session.entities.get_entity(active_veh_id)
+		if v_data:
+			var tank_info := ""
+			var total_mass := 0.0
+			var container := v_data.get_component(&"container") as ContainerComponent
+			if container:
+				total_mass = container.get_current_cargo_mass()
+				if container.inventory.has("fuel"):
+					var f_slot: Variant = container.inventory["fuel"]
+					if f_slot is Dictionary:
+						tank_info += " fuel: %.1f/%.1f L" % [float(f_slot.get("quantity", 0.0)), float(container.max_volume)]
+			veh_line = "Vehicle  id=%s  cargo_mass=%.0f kg %s" % [active_veh_id, total_mass, tank_info]
 
 	var controls_line := "Toggle  %s" % GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_DEBUG)
 	_label.text = "SIM DEBUG\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n%s" % [

@@ -1,96 +1,150 @@
 extends Resource
 class_name InventoryData
 
+## ID-Based Inventory System (UESS Architecture)
+## Stores only runtime_ids (StringName) of EntityData objects.
+## The authoritative entity data lives in EntityManager._entities.
+## This is a "flat database" approach: the inventory is a view, not a copy.
+
 ## Absolute volume limit in Liters.
 var max_volume: float = 10.0
 
 ## Soft mass limit in kg (owner becomes encumbered if exceeded).
 var max_mass: float = 20.0
 
-## The items currently inside the inventory.
-var items: Array[ItemInstance] = []
+## Runtime IDs of entities currently inside this inventory.
+var entity_ids: Array[StringName] = []
 
-## Tries to add an item. Returns true if AT LEAST ONE unit was added. 
-## The passed new_item will have its stack reduced by the amount added.
-func try_add_item(new_item: ItemInstance) -> bool:
-	if new_item == null or new_item.stack <= 0:
+## Attempts to add items from the given entity into this inventory.
+## Returns the number of units absorbed (0 = inventory is full).
+## When fully absorbed (return == entity's stack count), the caller should:
+##   - set_entity_parent() on the entity if it was used directly (check has_entity)
+##   - remove_entity() if it was fully merged into existing stacks (check !has_entity)
+## When partially absorbed (0 < return < stack count), the caller should:
+##   - reduce the entity's StackableComponent.count by the returned amount
+func try_add_entity(entity_id: StringName) -> int:
+	if not GameManager.session or not GameManager.session.entities:
+		return 0
+	var em := GameManager.session.entities as EntityManager
+	var entity := em.get_entity(entity_id)
+	if not entity:
+		return 0
+	
+	# Must have an ItemComponent to be inventory-valid
+	var item_comp := entity.get_component(&"item") as ItemComponent
+	if not item_comp:
+		return 0
+	
+	var stack_comp := entity.get_component(&"stackable") as StackableComponent
+	var incoming: int = stack_comp.count if stack_comp else 1
+	var max_stack: int = stack_comp.max_stack if stack_comp else 1
+	var vol_per: float = maxf(item_comp.volume_liters, 0.001)
+	
+	# Volume gate
+	var free_vol: float = maxf(0.0, max_volume - get_total_volume())
+	if free_vol < vol_per:
+		return 0 # Can't fit even one unit
+	var max_fit: int = mini(incoming, int(free_vol / vol_per))
+	if max_fit <= 0:
+		return 0
+	
+	var units_left: int = max_fit
+	
+	# Phase 1: Merge into existing compatible stacks
+	var can_merge: bool = stack_comp != null and max_stack > 1
+	if can_merge:
+		for ex_id: StringName in entity_ids:
+			if units_left <= 0: break
+			var ex := em.get_entity(ex_id)
+			if not ex or not entity.can_stack_with(ex): continue
+			var ex_stack := ex.get_component(&"stackable") as StackableComponent
+			if not ex_stack or ex_stack.count >= max_stack: continue
+			var xfer: int = mini(max_stack - ex_stack.count, units_left)
+			ex_stack.count += xfer
+			units_left -= xfer
+	
+	# Phase 2: Place remaining as new inventory slots
+	var used_original: bool = false
+	while units_left > 0:
+		var slot_size: int = mini(units_left, max_stack)
+		
+		if not used_original and max_fit == incoming:
+			# Entire entity is being absorbed and nothing was split —
+			# use the original entity directly for the first slot.
+			if stack_comp:
+				stack_comp.count = slot_size
+			entity_ids.append(entity_id)
+			used_original = true
+		else:
+			# Create a clone for this inventory slot
+			var registry: Node = Engine.get_main_loop().root.get_node(^"EntityRegistry")
+			var clone: EntityData = registry.clone_entity(entity)
+			var cs := clone.get_component(&"stackable") as StackableComponent
+			if cs:
+				cs.count = slot_size
+			em.register_entity(clone)
+			entity_ids.append(clone.runtime_id)
+		
+		units_left -= slot_size
+	
+	return max_fit
+
+## Checks if a specific entity is in this inventory.
+func has_entity(entity_id: StringName) -> bool:
+	return entity_ids.has(entity_id)
+
+## Removes an entity by runtime_id. Returns true if found and removed.
+func remove_entity(entity_id: StringName) -> bool:
+	var idx: int = entity_ids.find(entity_id)
+	if idx < 0:
 		return false
-	
-	var def: ItemDefinition = new_item.get_definition()
-	if not def:
-		return false
-
-	var volume_per_unit := def.base_volume
-	if volume_per_unit <= 0.0:
-		volume_per_unit = 0.001
-		
-	var current_vol := get_total_volume()
-	var free_volume: float = maxf(0.0, max_volume - current_vol)
-	
-	var max_can_fit: int = new_item.stack
-	if (new_item.stack * volume_per_unit) > free_volume:
-		max_can_fit = int(free_volume / volume_per_unit)
-		
-	if max_can_fit <= 0:
-		return false # Cannot fit even one item
-		
-	var amount_to_add := max_can_fit
-	var initial_add_amount := amount_to_add
-	
-	var max_stack := def.max_stack_size
-	
-	# Only allow stacking if there is no unique embedded data
-	var can_stack: bool = max_stack > 1 and \
-		new_item.dynamic_data.is_empty() and \
-		new_item.embedded_inventory == null and \
-		new_item.embedded_tank == null
-	
-	# Handle stacking into existing slots if applicable
-	if can_stack:
-		for item in items:
-			if amount_to_add <= 0:
-				break
-			if item.definition_id == new_item.definition_id and item.stack < max_stack and item.dynamic_data.is_empty():
-				var space: int = max_stack - item.stack
-				var transferred: int = int(min(space, amount_to_add))
-				item.stack += transferred
-				amount_to_add -= transferred
-
-	# Split remaining stack into proper maximum capacities
-	while amount_to_add > 0:
-		var chunk_size := int(min(amount_to_add, max_stack))
-		var chunk := ItemInstance.new()
-		chunk.definition_id = new_item.definition_id
-		chunk.stack = chunk_size
-		chunk.dynamic_data = new_item.dynamic_data.duplicate()
-		items.append(chunk)
-		amount_to_add -= chunk_size
-		
-	# Reduce the original item's stack by the amount we actually transferred
-	new_item.stack -= initial_add_amount
-	
+	entity_ids.remove_at(idx)
 	return true
 
-## Removes an item at a specific index.
-func remove_item(index: int) -> ItemInstance:
-	if index < 0 or index >= items.size():
-		return null
-	var item: ItemInstance = items[index]
-	items.remove_at(index)
-	return item
+## Removes an entity at a specific index. Returns the runtime_id or empty StringName.
+func remove_at(index: int) -> StringName:
+	if index < 0 or index >= entity_ids.size():
+		return &""
+	var entity_id: StringName = entity_ids[index]
+	entity_ids.remove_at(index)
+	return entity_id
 
-## Calculates total mass of all items.
+## Calculates total mass of all items using their UESS components.
 func get_current_mass() -> float:
+	if not GameManager.session or not GameManager.session.entities:
+		return 0.0
+	var em := GameManager.session.entities as EntityManager
 	var total: float = 0.0
-	for item: ItemInstance in items:
-		if item:
-			total += item.get_total_mass()
+	for entity_id: StringName in entity_ids:
+		var entity := em.get_entity(entity_id)
+		if not entity: continue
+		var item_comp := entity.get_component(&"item") as ItemComponent
+		if not item_comp: continue
+		var count: int = 1
+		var stack_comp := entity.get_component(&"stackable") as StackableComponent
+		if stack_comp:
+			count = stack_comp.count
+		total += item_comp.mass_kg * float(count)
 	return total
 
-## Calculates total volume of all items.
+## Calculates total volume of all items using their UESS components.
 func get_total_volume() -> float:
+	if not GameManager.session or not GameManager.session.entities:
+		return 0.0
+	var em := GameManager.session.entities as EntityManager
 	var total: float = 0.0
-	for item: ItemInstance in items:
-		if item:
-			total += item.get_total_volume()
+	for entity_id: StringName in entity_ids:
+		var entity := em.get_entity(entity_id)
+		if not entity: continue
+		var item_comp := entity.get_component(&"item") as ItemComponent
+		if not item_comp: continue
+		var count: int = 1
+		var stack_comp := entity.get_component(&"stackable") as StackableComponent
+		if stack_comp:
+			count = stack_comp.count
+		total += item_comp.volume_liters * float(count)
 	return total
+
+## Returns the number of occupied slots.
+func get_slot_count() -> int:
+	return entity_ids.size()

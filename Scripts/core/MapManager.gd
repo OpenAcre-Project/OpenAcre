@@ -2,6 +2,7 @@ class_name MapManager
 extends RefCounted
 
 const PLAYER_SCENE: PackedScene = preload("res://Scenes/Actors/Player.tscn")
+const STREAM_SPOOLER_SCRIPT: GDScript = preload("res://Scripts/streaming/StreamSpooler.gd")
 
 static func populate_world(world_root: Node3D) -> void:
 	var tree: SceneTree = world_root.get_tree()
@@ -40,10 +41,40 @@ static func populate_world(world_root: Node3D) -> void:
 
 	# 2. Spawn the Player
 	_spawn_player(world_root, tree)
+	_ensure_streaming_runtime(world_root, tree)
 
 	# 3. Register Vehicles (SimulationCore handles the rest!)
 	if map_def.starting_vehicles != null:
 		_register_map_vehicles(map_def.starting_vehicles, tree)
+
+	var spooler_node: Node = world_root.find_child("StreamSpooler", true, false)
+	if spooler_node != null and spooler_node.has_method("refresh_from_current_chunks"):
+		spooler_node.call("refresh_from_current_chunks", "post_register_vehicles")
+
+static func _ensure_streaming_runtime(world_root: Node3D, tree: SceneTree) -> void:
+	var world_container: Node = tree.get_first_node_in_group("world_entity_container")
+	if world_container == null:
+		var container := Node3D.new()
+		container.name = "WorldEntityContainer"
+		container.add_to_group("world_entity_container")
+		world_root.add_child(container)
+		GameLog.info("[MapManager] Created WorldEntityContainer runtime node")
+
+	var spooler_node: Node = world_root.find_child("StreamSpooler", true, false)
+	if spooler_node == null:
+		spooler_node = Node.new()
+		spooler_node.name = "StreamSpooler"
+		spooler_node.set_script(STREAM_SPOOLER_SCRIPT)
+		world_root.add_child(spooler_node)
+		GameLog.info("[MapManager] Created StreamSpooler runtime node")
+	else:
+		GameLog.info("[MapManager] Reusing existing StreamSpooler runtime node")
+
+	if spooler_node != null and spooler_node.has_method("update_active_chunks"):
+		var player_data: PlayerData = GameManager.session.entities.get_player()
+		if player_data != null and player_data.has_world_transform:
+			spooler_node.call("update_active_chunks", player_data.world_position, 2)
+			GameLog.info("[MapManager] Primed StreamSpooler with player position")
 
 static func _spawn_player(parent_node: Node, tree: SceneTree) -> void:
 	var spawn_pts: Array[Node] = tree.get_nodes_in_group("spawn_points_player")
@@ -79,7 +110,7 @@ static func _register_map_vehicles(spawn_table: VehicleSpawnTable, tree: SceneTr
 		if entry == null or entry.vehicle_id == &"" or entry.spec_id == &"":
 			continue
 
-		if GameManager.session.entities.has_vehicle(entry.vehicle_id):
+		if GameManager.session.entities.get_entity(entry.vehicle_id) != null:
 			continue
 
 		# Cross-reference the table with our physical MapSpawnPoint markers!
@@ -93,12 +124,21 @@ static func _register_map_vehicles(spawn_table: VehicleSpawnTable, tree: SceneTr
 				start_yaw = marker.global_rotation.y
 				break
 
-		GameManager.session.entities.register_vehicle(
-			entry.vehicle_id,
-			entry.spec_id,
-			start_pos,
-			start_yaw,
-			entry.fuel_level,
-			entry.maintenance
-		)
-	GameLog.info("[MapManager] Map vehicles registered to GameManager.session.entities.")
+		var new_entity: EntityData = EntityRegistry.create_entity(entry.spec_id, entry.vehicle_id)
+		if new_entity:
+			var tf: TransformComponent = new_entity.get_transform()
+			if tf:
+				tf.world_position = start_pos
+				tf.world_rotation_radians = start_yaw
+			
+			var container: ContainerComponent = new_entity.get_component(&"container") as ContainerComponent
+			if container:
+				# Note: Currently hardcoding fuel level to map specs, ignoring complex fluid routing for now
+				if container.inventory.has("fuel"):
+					var fuel_slot: Variant = container.inventory["fuel"]
+					if fuel_slot is Dictionary:
+						fuel_slot["quantity"] = entry.fuel_level
+			
+			GameManager.session.entities.register_entity(new_entity)
+			
+	GameLog.info("[MapManager] Map vehicles registered to UESS GameManager.")

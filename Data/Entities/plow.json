@@ -1,0 +1,9 @@
+{
+	"id": "vehicle.plow",
+	"view_scene": "res://Scenes/Vehicles/Attachments/PlowAttachment.tscn",
+	"components": {
+		"transform": {},
+		"vehicle": {},
+		"seat": {}
+	}
+}

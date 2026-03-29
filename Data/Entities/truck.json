@@ -1,0 +1,12 @@
+{
+	"id": "vehicle.truck",
+	"view_scene": "res://Scenes/Vehicles/Truck.tscn",
+	"components": {
+		"transform": {},
+		"vehicle": {
+			"engine_temp_celsius": 20.0,
+			"fuel_level": 100.0
+		},
+		"seat": {}
+	}
+}

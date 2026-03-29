@@ -10,7 +10,8 @@ config_version=5
 
 [application]
 
-config/name="Farm Simulator"
+config/name="OpenAcre"
+config/version="1.2"
 run/main_scene="res://Scenes/Main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
@@ -20,6 +21,7 @@ config/icon="res://icon.svg"
 GameManager="*res://Singletons/GameManager.gd"
 EventBus="*res://Singletons/EventBus.gd"
 ItemRegistry="*res://Scripts/simulation/ItemRegistry.gd"
+EntityRegistry="*res://Scripts/core/EntityRegistry.gd"
 
 [debug]
 
@@ -75,6 +77,7 @@ ui_down={
 
 [physics]
 
+common/physics_ticks_per_second=120
 3d/physics_engine="Jolt Physics"
 common/physics_interpolation=true
 

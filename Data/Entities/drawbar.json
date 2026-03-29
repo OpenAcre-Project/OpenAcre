@@ -1,0 +1,9 @@
+{
+	"id": "vehicle.drawbar",
+	"view_scene": "res://Scenes/Vehicles/Attachments/DrawbarAttachment.tscn",
+	"components": {
+		"transform": {},
+		"vehicle": {},
+		"seat": {}
+	}
+}

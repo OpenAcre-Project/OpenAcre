@@ -1,6 +1,14 @@
 extends Resource
 class_name ItemInstance
 
+## @deprecated — This class is superseded by EntityData in the UESS architecture.
+## Inventories now store entity runtime_ids (StringName) and resolve EntityData
+## from EntityManager. All item state lives in UESS Components (ItemComponent, 
+## StackableComponent, DurabilityComponent, etc.).
+##
+## This file is retained only for reference. It should NOT be used in new code.
+## All references have been migrated to the UESS EntityData + InventoryData system.
+
 ## UID linking back to static definition
 var definition_id: StringName = &""
 
@@ -23,11 +31,8 @@ func get_total_mass() -> float:
 	var def: ItemDefinition = get_definition()
 	var base: float = (def.base_mass if def else 0.0) * stack
 	var tank_mass: float = embedded_tank.get_current_mass() if embedded_tank else 0.0
-	var inv_mass: float = embedded_inventory.get_current_mass() if embedded_inventory else 0.0
-	return base + tank_mass + inv_mass
+	return base + tank_mass
 
 func get_total_volume() -> float:
 	var def: ItemDefinition = get_definition()
-	# Usually just base_volume * stack. 
-	# User says: "An empty backpack takes up the same space as a full one."
 	return (def.base_volume if def else 0.0) * stack

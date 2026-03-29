@@ -4,7 +4,7 @@ const ChunkGridOverlayRef = preload("res://Scripts/debug/ChunkGridOverlay.gd")
 const FarmableGridOverlayRef = preload("res://Scripts/debug/FarmableGridOverlay.gd")
 
 @export var enable_chunk_streaming := true
-@export var streamed_chunk_radius := 2
+@export var streamed_chunk_radius := 2  # change this to change spawing radiu
 @export var stream_update_interval_seconds := 0.5
 
 var _stream_target: Node3D = null

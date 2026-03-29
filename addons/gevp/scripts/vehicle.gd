@@ -6,7 +6,7 @@
 ## including engine torque, gearboxes, and axle simulation.
 ## [Vehicle3D] inherits from this to add game-specific features.
 class_name Vehicle
-extends RigidBody3D
+extends EntityView3D
 
 @export_group("Wheel Nodes")
 ## Assign this to the Wheel [RayCast3D] that is this vehicle's front left wheel.
@@ -682,11 +682,12 @@ func process_steering(delta : float) -> void:
 	var steering_slip := get_max_steering_slip_angle()
 	
 	## Adjust steering speed based on vehicle speed and max steering angle
-	var steer_speed_correction := steering_speed / (speed * steering_speed_decay) / max_steering_angle
+	# FIX: Prevent Division By Zero at rest by wrapping the denominator in maxf()
+	var steer_speed_correction := steering_speed / maxf(speed * steering_speed_decay, 0.5) / max_steering_angle
 	
 	## If the steering input is opposite the current steering, apply countersteering speed instead
 	if signf(steering_input) != signf(steering_amount):
-		steer_speed_correction = countersteer_speed / (speed * steering_speed_decay)
+		steer_speed_correction = countersteer_speed / maxf(speed * steering_speed_decay, 0.5)
 	
 	## Check steering slip threshold and reduce steering amount if crossed.
 	if absf(steering_slip) > steering_slip_assist:
@@ -1080,7 +1081,7 @@ func calculate_average_tire_friction(weight : float, surface : String) -> float:
 func calculate_brake_force() -> void:
 	var friction := calculate_average_tire_friction(vehicle_mass * 9.8, "Road")
 	max_brake_force = ((friction * braking_grip_multiplier) * average_drive_wheel_radius) / wheel_array.size()
-	max_handbrake_force = ((friction * braking_grip_multiplier * 0.05) / average_drive_wheel_radius)
+	max_handbrake_force = ((friction * braking_grip_multiplier * 1.5) / average_drive_wheel_radius)
 
 func calculate_center_of_gravity(front_distribution : float) -> Vector3:
 	if front_left_wheel == null or front_right_wheel == null or rear_left_wheel == null or rear_right_wheel == null:

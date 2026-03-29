@@ -1,0 +1,11 @@
+{
+	"id": "item.test_apple",
+	"view_scene": "res://Scenes/Interactables/apple.tscn",
+	"components": {
+		"transform": {},
+		"durability": {
+			"health": 100.0,
+			"rot_rate_per_minute": 1.5
+		}
+	}
+}

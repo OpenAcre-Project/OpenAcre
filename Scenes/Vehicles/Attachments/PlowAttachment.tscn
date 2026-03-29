@@ -1,9 +1,9 @@
 [gd_scene format=3 uid="uid://c2jrylig6ynlj"]
 
-[ext_resource type="Script" uid="uid://cuesgw25fq0pv" path="res://Scripts/vehicles/PlowAttachment.gd" id="1_plow_gd"]
+[ext_resource type="Script" uid="uid://cuesgw25fq0pv" path="res://Scripts/vehicles/Attachments/PlowAttachment.gd" id="1_plow_gd"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_plow"]
-size = Vector3(3, 0.5, 0.5)
+size = Vector3(6.3775635, 1.2308655, 0.76660156)
 
 [sub_resource type="BoxMesh" id="BoxMesh_plow"]
 size = Vector3(3, 0.5, 0.5)
@@ -11,18 +11,33 @@ size = Vector3(3, 0.5, 0.5)
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plow_color"]
 albedo_color = Color(0.1, 0.4, 0.1, 1)
 
+[sub_resource type="BoxShape3D" id="BoxShape3D_plow_detection_big"]
+size = Vector3(3.0507813, 2, 1.9746094)
+
+[sub_resource type="BoxMesh" id="BoxMesh_cmr70"]
+
 [node name="PlowAttachment" type="RigidBody3D" unique_id=191783416]
-mass = 200.0
+mass = 500.0
 script = ExtResource("1_plow_gd")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1038087730]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.010559082, 0.607193, -0.8358493)
 shape = SubResource("BoxShape3D_plow")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=344549370]
+transform = Transform3D(2.1372414, 0, 0, 0, 2.535868, 0, 0, 0, 1.4781109, 0, 0.6198729, -0.860651)
 mesh = SubResource("BoxMesh_plow")
 surface_material_override/0 = SubResource("StandardMaterial3D_plow_color")
 
+[node name="HitchPoint" type="Marker3D" parent="." unique_id=35124642]
+transform = Transform3D(1, 0, 0, 0, 0.99999994, 0, 0, 0, 0.99999994, 0, 0.93290734, 0.41467237)
+
 [node name="DetectionArea" type="Area3D" parent="." unique_id=387554892]
+transform = Transform3D(1.8935407, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.84343684, 0.5)
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea" unique_id=1337859789]
-shape = SubResource("BoxShape3D_plow")
+shape = SubResource("BoxShape3D_plow_detection_big")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=786605468]
+transform = Transform3D(1, 0, 0, 0, 0.52760667, 0, 0, 0, 1.329943, 0, 0.97285855, -0.13604093)
+mesh = SubResource("BoxMesh_cmr70")

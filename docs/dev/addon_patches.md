@@ -10,6 +10,7 @@ This project does not git-track addon sources, so this file records local addon 
     The base GEVP plugin was patched to support the **OpenAcre** deterministic steering and state persistence architecture.
 
 - **`vehicle.gd` Patch**: Exposed internal torque and suspension parameters to the `Vehicle3D` wrapper.
+- **Steering Fix**: Added a safety clamp to the steering speed correction denominator in `process_steering()` to prevent division by zero when the vehicle is stationary.
 - **Wheel Raycast Fix**: Modified the raycast calculation to handle [Terrain3D](../rendering/terrain3d_rendering.md) positive coordinate grids more accurately.
 
 !!! warning "Reproducibility"

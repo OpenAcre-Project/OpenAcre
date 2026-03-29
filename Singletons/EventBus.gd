@@ -9,6 +9,12 @@ signal log_message(text: String, level: int)
 signal show_notification(msg: String)
 @warning_ignore("unused_signal")
 signal update_crosshair_prompt(text: String)
+@warning_ignore("unused_signal")
+signal update_vehicle_hints(show: bool, hints: Array[String])
+
+# Entity Streaming Signals
+@warning_ignore("unused_signal")
+signal entity_view_released(entity_id: StringName)
 
 # Game Flow Signals
 @warning_ignore("unused_signal")

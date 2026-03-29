@@ -7,8 +7,8 @@
 # OpenAcre 
 **A Hardcore, Open-Source Agricultural Life Simulator built in Godot 4.**
 
-[![Version](https://img.shields.io/badge/Version-v_1.1-green)](#)
-[![Docs](https://img.shields.io/badge/Documentation-v_1.1-blue)](https://openacre-project.github.io/OpenAcre/)
+[![Version](https://img.shields.io/badge/Version-v_1.2-green)](#)
+[![Docs](https://img.shields.io/badge/Documentation-v_1.2-blue)](https://openacre-project.github.io/OpenAcre/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](Assets/README.md)
 

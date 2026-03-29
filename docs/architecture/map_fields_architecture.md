@@ -34,6 +34,7 @@ Maps parse raw polygon vertices mapped in 3D, but only extract the `X` and `Z` b
 
 The JSON boundaries are converted into lightweight `FieldPolygon` `RefCounted` objects to be queried securely without recalculation.
 During JSON interpretation:
+
 1. `x` and `z` values are extracted and offset using the map's `field_data_offset`.
 2. A Bounding Box (`Rect2i`) is instantly pre-calculated utilizing `floori()` and `ceili()` parameters to conservatively encapsulate maximum exterior float bounds safely.
 

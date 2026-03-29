@@ -4,6 +4,7 @@
 ## - Camera controls & Input processing
 ## - Interpolation between simulation frames
 ## - In-game interaction (entering/exiting)
+@tool
 extends Vehicle
 class_name Vehicle3D
 
@@ -12,10 +13,7 @@ const OrbitCameraControllerRef = preload("res://Scripts/camera/OrbitCameraContro
 
 @export var camera_vertical_speed := 3.0
 @export var mouse_sensitivity := 0.002
-@export var simulation_vehicle_id: StringName = &""
-@export var vehicle_spec_id: StringName = &""
-@export var initial_fuel_level := 100.0
-@export var initial_engine_temp_celsius := 20.0
+
 @export var camera_height_min := 1.4
 @export var camera_height_max := 4.0
 @export var camera_zoom_step := 0.5
@@ -24,10 +22,16 @@ const OrbitCameraControllerRef = preload("res://Scripts/camera/OrbitCameraContro
 @export var camera_follow_smooth_speed := 10.0
 @export var camera_pitch_min_degrees := -70.0
 @export var camera_pitch_max_degrees := 25.0
-@export var camera_auto_center_delay := 1.0
-@export var camera_auto_center_speed := 2.0
+@export var camera_auto_center_delay := 0.0
+@export var camera_auto_center_speed_factor := 0.2
 @export var steering_sensitivity := 2.5
-@export var steering_return_speed := 0.25
+@export var steering_return_speed := 1.0
+@export var hitch_detection_radius_fallback: float = 3.0
+@export var hitch_debug_visual_enabled: bool = true
+@export var hitch_face_implement_away_from_vehicle: bool = true
+@export var hitch_offset_lowered: float = 0.0
+@export var hitch_offset_raised: float = 0.45
+@export var hitch_animation_duration: float = 0.5
 @export_enum("X", "Y", "Z") var front_visual_steering_axis: int = 1
 @export_enum("X", "Y", "Z") var visual_spin_axis: int = 0
 @export var invert_visual_steering_direction := false
@@ -44,7 +48,10 @@ var can_exit: bool = false
 var driver_player: CharacterBody3D = null
 var _camera_controller: OrbitCameraController
 var _steering_target: float = 0.0
-var _resolved_simulation_vehicle_id: StringName = &""
+
+var _available_sockets: Array[HitchSocket3D] = []
+var active_socket_index: int = 0
+
 
 @onready var wheel_front_left: Wheel = $WheelFrontLeft
 @onready var wheel_front_right: Wheel = $WheelFrontRight
@@ -54,15 +61,15 @@ var _resolved_simulation_vehicle_id: StringName = &""
 @onready var camera: Camera3D = $SpringArm3D/Camera3D
 @onready var exit_point: Node3D = $ExitPoint
 
+
 func _ready() -> void:
 	if torque_curve == null:
 		torque_curve = Curve.new()
 		torque_curve.add_point(Vector2(0.0, 1.0))
 		torque_curve.add_point(Vector2(1.0, 1.0))
 		
-	_resolved_simulation_vehicle_id = _resolve_vehicle_id()
 	_configure_wheel_visual_bindings()
-	var vehicle_already_registered := GameManager.session.entities.has_vehicle(_resolved_simulation_vehicle_id)
+	_register_sockets(self)
 
 	super._ready()
 	camera.current = false
@@ -74,49 +81,52 @@ func _ready() -> void:
 	_camera_controller.zoom_max = camera_zoom_max
 	_camera_controller.height_min = camera_height_min
 	_camera_controller.height_max = camera_height_max
-	_camera_controller.is_auto_center_enabled = true
+	_camera_controller.is_auto_center_enabled = false
+	_camera_controller.is_velocity_alignment_enabled = true
 	_camera_controller.auto_center_delay = camera_auto_center_delay
-	_camera_controller.auto_center_speed = camera_auto_center_speed
+	_camera_controller.velocity_alignment_factor = camera_auto_center_speed_factor
 
-	if vehicle_already_registered:
-		_sync_from_simulation_core()
-	else:
-		GameManager.session.entities.register_vehicle(
-			_resolved_simulation_vehicle_id,
-			vehicle_spec_id,
-			global_position,
-			rotation.y,
-			initial_fuel_level,
-			100.0
-		)
-		GameManager.session.entities.set_vehicle_stats(_resolved_simulation_vehicle_id, initial_fuel_level, initial_engine_temp_celsius)
-		
-	var vehicle_manager := get_tree().get_first_node_in_group("vehicle_manager")
-	if vehicle_manager != null and vehicle_manager.has_method("adopt_vehicle"):
-		vehicle_manager.adopt_vehicle(_resolved_simulation_vehicle_id, self)
+	# Improve traction parameters for off-road surfaces
+	tire_stiffnesses["Dirt"] = 8.0
+	tire_stiffnesses["Grass"] = 8.0
+	coefficient_of_friction["Dirt"] = 8.0
+	coefficient_of_friction["Grass"] = 7.0
+	lateral_grip_assist["Dirt"] = 2.5
+	lateral_grip_assist["Grass"] = 2.5
+	longitudinal_grip_ratio["Dirt"] = 0.95
+	longitudinal_grip_ratio["Grass"] = 0.95
 
-	_publish_vehicle_state_to_simulation_core()
-	_sync_physics_mass()
-	
-	GameManager.session.entities.vehicle_data_changed.connect(_on_simulation_vehicle_data_changed)
 
-func _on_simulation_vehicle_data_changed(id: StringName, _data: VehicleData) -> void:
-	if id == _resolved_simulation_vehicle_id:
-		_sync_physics_mass()
 
-func _sync_physics_mass() -> void:
-	var data := GameManager.session.entities.get_vehicle(_resolved_simulation_vehicle_id)
-	if data:
-		var new_mass := data.get_total_vehicle_mass()
-		if not is_equal_approx(mass, new_mass):
-			mass = new_mass
-			
-			# Pull the center of mass down to simulate low-slung tanks/chassis weight
-			# Every 1000kg of added weight lowers the CoM by 0.1 meters
-			var added_mass := maxf(0.0, mass - data.base_mass)
-			center_of_mass = Vector3(0.0, -0.2 - (added_mass * 0.0001), 0.0)
-			
-			sleeping = false
+	# Debugging physical collisions
+	contact_monitor = true
+	max_contacts_reported = 8
+	print("[Vehicle3D] Collision debug system started on: ", name)
+
+func _register_sockets(parent: Node) -> void:
+	for child: Node in parent.get_children():
+		if child is HitchSocket3D:
+			var socket := child as HitchSocket3D
+			_available_sockets.append(socket)
+			socket.implement_attached.connect(_on_implement_attached.bind(socket))
+			socket.implement_detached.connect(_on_implement_detached.bind(socket))
+		else:
+			_register_sockets(child)
+
+func _on_implement_attached(implement: RigidBody3D, _socket: HitchSocket3D) -> void:
+	add_collision_exception_with(implement)
+	# Streaming assignments now happen at HitchSocket3D level
+	pass
+
+func _on_implement_detached(implement: RigidBody3D, _socket: HitchSocket3D) -> void:
+	remove_collision_exception_with(implement)
+	pass
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
+
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	if GameInput.is_gameplay_input_blocked(get_tree()):
@@ -144,7 +154,6 @@ func _physics_process(delta: float) -> void:
 		handbrake_input = 1.0
 		clutch_input = 0.0
 		super._physics_process(delta)
-		_publish_vehicle_state_to_simulation_core()
 		_sync_driver_position_to_vehicle()
 		return
 
@@ -167,7 +176,7 @@ func _physics_process(delta: float) -> void:
 			_steering_target += steer_raw * (steering_sensitivity * speed_factor) * delta
 		else:
 			# Caster effect: the faster we go, the more the wheels want to straighten out
-			var return_force := steering_return_speed * (0.5 + current_speed * 0.1)
+			var return_force := steering_return_speed * current_speed * 0.1
 			_steering_target = move_toward(_steering_target, 0.0, return_force * delta)
 		
 		_steering_target = clamp(_steering_target, -1.0, 1.0)
@@ -175,7 +184,13 @@ func _physics_process(delta: float) -> void:
 
 		throttle_input = throttle_strength
 		brake_input = reverse_strength
-		handbrake_input = Input.get_action_strength(GameInput.ACTION_VEHICLE_BRAKE)
+		
+		# Idle brake: apply brakes if stationary and no input
+		if throttle_strength < 0.05 and reverse_strength < 0.05 and current_speed < 0.5:
+			brake_input = 0.5
+			handbrake_input = 1.0
+		else:
+			handbrake_input = Input.get_action_strength(GameInput.ACTION_VEHICLE_BRAKE)
 		clutch_input = handbrake_input
 
 		if current_gear == -1:
@@ -196,16 +211,41 @@ func _physics_process(delta: float) -> void:
 		return
 
 	_camera_controller.update(delta, GameInput.is_gameplay_input_blocked(get_tree()))
-	_publish_vehicle_state_to_simulation_core()
 	_sync_driver_position_to_vehicle()
 
 func _input(event: InputEvent) -> void:
 	if GameInput.is_gameplay_input_blocked(get_tree()):
 		return
 
-	if is_driven and can_exit and GameInput.is_interact_event(event):
-		get_viewport().set_input_as_handled()
-		exit_vehicle()
+	if is_driven and can_exit:
+		if GameInput.is_interact_event(event):
+			get_viewport().set_input_as_handled()
+			exit_vehicle()
+		elif event.is_action_pressed(GameInput.ACTION_ATTACH_IMPLEMENT):
+			_toggle_attachment()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed(GameInput.ACTION_LOWER_IMPLEMENT):
+			var active_socket: HitchSocket3D = _get_active_socket()
+			if active_socket:
+				active_socket.on_lower_command()
+				_update_hints()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed(GameInput.ACTION_TOGGLE_IMPLEMENT):
+			var active_socket: HitchSocket3D = _get_active_socket()
+			if active_socket:
+				active_socket.on_pto_command()
+				_update_hints()
+			get_viewport().set_input_as_handled()
+		elif event.is_action_pressed(GameInput.ACTION_CYCLE_IMPLEMENT):
+			if _available_sockets.size() > 1:
+				active_socket_index = (active_socket_index + 1) % _available_sockets.size()
+				_update_hints()
+			get_viewport().set_input_as_handled()
+
+func _get_active_socket() -> HitchSocket3D:
+	if active_socket_index < _available_sockets.size() and active_socket_index >= 0:
+		return _available_sockets[active_socket_index]
+	return null
 
 func interact(player: Node3D) -> void:
 	if not is_driven:
@@ -213,6 +253,32 @@ func interact(player: Node3D) -> void:
 
 func get_interaction_prompt() -> String:
 	return "Drive Vehicle [%s]" % GameInput.get_action_binding_text(GameInput.ACTION_INTERACT)
+
+## UESS: Called by StreamSpooler when this node enters the world.
+## Reads VehicleComponent data to initialize physical state.
+func apply_data(data: EntityData) -> void:
+	super.apply_data(data)
+	reset_physics_state()
+
+	var vc: VehicleComponent = entity_data.get_component(&"vehicle") as VehicleComponent
+	if vc:
+		if "fuel_level" in self:
+			set("fuel_level", vc.fuel_level)
+		if "engine_temp" in self:
+			set("engine_temp", vc.engine_temp_celsius)
+
+## UESS: Called by StreamSpooler right before destroying the node.
+## Writes current physical state back to VehicleComponent.
+func extract_data() -> void:
+	super.extract_data()
+	if not entity_data: return
+
+	var vc: VehicleComponent = entity_data.get_component(&"vehicle") as VehicleComponent
+	if vc:
+		if "fuel_level" in self:
+			vc.fuel_level = get("fuel_level")
+		if "engine_temp" in self:
+			vc.engine_temp_celsius = get("engine_temp")
 
 func enter_vehicle(player: Node3D) -> void:
 	is_driven = true
@@ -227,23 +293,42 @@ func enter_vehicle(player: Node3D) -> void:
 
 	if driver_player is CharacterBody3D:
 		VehicleSeatControllerRef.enter_vehicle(driver_player, camera)
-		GameManager.session.entities.set_player_active_vehicle(_get_driver_player_id(), _resolved_simulation_vehicle_id)
+		if entity_data:
+			var em := GameManager.session.entities as EntityManager
+			var p_id := StringName(driver_player.name) if driver_player.name == "player.main" else &"player.main"
+			em.set_player_active_vehicle(p_id, entity_data.runtime_id)
+			
 	if Input.get_mouse_mode() != Input.MOUSE_MODE_CAPTURED:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 	await get_tree().create_timer(0.5).timeout
 	can_exit = true
+	_update_hints()
 
 func exit_vehicle() -> void:
 	is_driven = false
+	can_exit = false
+	EventBus.update_vehicle_hints.emit(false, [])
+	_clear_active_vehicle_owner()
 
 	if driver_player:
 		if driver_player is CharacterBody3D:
-			GameManager.session.entities.set_player_active_vehicle(_get_driver_player_id(), &"")
-			VehicleSeatControllerRef.exit_vehicle(driver_player, exit_point)
+			VehicleSeatControllerRef.exit_vehicle(driver_player, _get_exit_anchor())
 		driver_player = null
 
 		await get_tree().create_timer(0.1).timeout
+
+func force_eject() -> void:
+	# Synchronous emergency exit used by streaming/destruction paths.
+	EventBus.update_vehicle_hints.emit(false, [])
+	_clear_active_vehicle_owner()
+
+	if driver_player and driver_player is CharacterBody3D:
+		VehicleSeatControllerRef.exit_vehicle(driver_player, _get_exit_anchor())
+
+	driver_player = null
+	is_driven = false
+	can_exit = false
 
 func _sync_drive_gear_intent(throttle_strength: float, reverse_strength: float) -> void:
 	if is_shifting:
@@ -266,11 +351,20 @@ func teleport(world_position: Vector3, world_yaw_radians: float) -> void:
 	global_position = world_position
 	rotation.y = world_yaw_radians
 	reset_physics_state()
+	extract_data()
 
 func reset_physics_state() -> void:
 	# Reset body velocities
 	linear_velocity = Vector3.ZERO
 	angular_velocity = Vector3.ZERO
+	local_velocity = Vector3.ZERO
+	speed = 0.0
+
+	if not is_inside_tree():
+		previous_global_position = position
+		return
+
+	previous_global_position = global_position
 	
 	# Godot Advanced Vehicle Physics (GEVP) wheels track their previous_global_position. 
 	# When forcibly moving the vehicle, we must reset their state so they don't calculate
@@ -280,28 +374,53 @@ func reset_physics_state() -> void:
 	if wheel_rear_left: wheel_rear_left.previous_global_position = wheel_rear_left.global_position
 	if wheel_rear_right: wheel_rear_right.previous_global_position = wheel_rear_right.global_position
 
-func _sync_from_simulation_core() -> void:
-	var vehicle_data := GameManager.session.entities.get_vehicle(_resolved_simulation_vehicle_id)
-	if not vehicle_data.has_world_transform:
-		return
 
-	_steering_target = vehicle_data.steering_input
-	steering_input = _steering_target
-	teleport(vehicle_data.world_position, vehicle_data.world_yaw_radians)
 
-func _publish_vehicle_state_to_simulation_core() -> void:
-	var occupant_player_id: StringName = &""
+func _get_current_hints() -> Array[String]:
+	var hints: Array[String] = []
+	var active_socket: HitchSocket3D = _get_active_socket()
+	
+	if active_socket == null:
+		return hints
+
+	var socket_name := str(active_socket.name).replace("_", " ")
+	hints.append("--- Active: %s ---" % socket_name)
+
+	if _available_sockets.size() > 1:
+		hints.append("[%s] Cycle Implement" % GameInput.get_action_binding_text(GameInput.ACTION_CYCLE_IMPLEMENT))
+
+	if not active_socket.has_attached_implement():
+		var candidate: Implement3D = active_socket.find_attach_candidate(hitch_detection_radius_fallback)
+		if candidate != null:
+			hints.append("[%s] Attach Implement" % GameInput.get_action_binding_text(GameInput.ACTION_ATTACH_IMPLEMENT))
+	else:
+		hints.append("[%s] Detach Implement" % GameInput.get_action_binding_text(GameInput.ACTION_ATTACH_IMPLEMENT))
+		
+		var imp: Implement3D = active_socket.get_attached_implement()
+		var is_lowered: bool = imp.is_currently_lowered() if (imp and imp.has_method("is_currently_lowered")) else false
+		var lower_text: String = "Raise" if is_lowered else "Lower"
+		hints.append("[%s] %s Implement" % [GameInput.get_action_binding_text(GameInput.ACTION_LOWER_IMPLEMENT), lower_text])
+		
+		var is_pto: bool = imp.is_active if (imp and "is_active" in imp) else false
+		var pto_text: String = "Turn Off PTO" if is_pto else "Turn On PTO"
+		hints.append("[%s] %s" % [GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_IMPLEMENT), pto_text])
+	return hints
+
+func _update_hints() -> void:
 	if is_driven:
-		occupant_player_id = _get_driver_player_id()
+		EventBus.update_vehicle_hints.emit(true, _get_current_hints())
 
-	GameManager.session.entities.set_vehicle_state(
-		_resolved_simulation_vehicle_id,
-		global_position,
-		rotation.y,
-		linear_velocity.length(),
-		steering_input,
-		occupant_player_id
-	)
+func _toggle_attachment() -> void:
+	var active_socket: HitchSocket3D = _get_active_socket()
+	if active_socket == null: return
+	
+	if active_socket.has_attached_implement():
+		active_socket.detach()
+	else:
+		var candidate: Implement3D = active_socket.find_attach_candidate(hitch_detection_radius_fallback)
+		if candidate != null:
+			active_socket.attach(candidate)
+	_update_hints()
 
 ## Keep the driver Player node's position in sync with the vehicle.
 ## The Player's process_mode is DISABLED while seated, so it cannot
@@ -315,14 +434,30 @@ func _sync_driver_position_to_vehicle() -> void:
 	if player_id != &"":
 		GameManager.session.entities.set_player_transform(player_id, global_position, rotation.y)
 
-func _resolve_vehicle_id() -> StringName:
-	if simulation_vehicle_id != &"":
-		return simulation_vehicle_id
+func _get_runtime_id() -> StringName:
+	if entity_data: return entity_data.runtime_id
+	return &""
 
-	var path_id := str(get_path()).replace("/", ".")
-	if path_id.begins_with("."):
-		path_id = path_id.substr(1)
-	return StringName("vehicle." + path_id)
+func _get_exit_anchor() -> Node3D:
+	if is_instance_valid(exit_point):
+		return exit_point
+	return self
+
+func _clear_active_vehicle_owner() -> void:
+	if not entity_data:
+		return
+	if not GameManager.session or not GameManager.session.entities:
+		return
+
+	var em := GameManager.session.entities as EntityManager
+	var player_id := _get_driver_player_id()
+	if player_id != &"":
+		em.set_player_active_vehicle(player_id, &"")
+		return
+
+	var fallback_player := em.get_player(&"player.main")
+	if fallback_player != null and fallback_player.active_vehicle_id == entity_data.runtime_id:
+		em.set_player_active_vehicle(&"player.main", &"")
 
 func _get_driver_player_id() -> StringName:
 	if driver_player == null:

@@ -1,67 +1,80 @@
 # :map: Architecture Overview | [Home](../index.md)
 
-This project follows a strict **Logic-Visual Separation** (also known as Data-View Separation) to support large-scale simulation, persistence, and decoupling of concerns.
+This project follows a strict **Logic-Visual Separation** (also known as Data-View Separation) powered by the **Universal Entity Streaming System (UESS)**.
 
 !!! abstract "Core Philosophy"
     The project is split into two distinct execution layers to ensure simulation results are independent of 3D rendering and player proximity.
 
 ---
 
-## 🏛️ Logic vs. Visual Layers
+##  Logic vs. Visual Layers
 
 ```mermaid
 graph TD
-    subgraph "Logic Layer (SimulationCore)"
-        A[EntityManager] --> B(VehicleData)
+    subgraph "Logic Layer (UESS)"
+        A[EntityManager] --> B(EntityData + Components)
         A --> C(PlayerData)
-        B --> D[Persistence/Saving]
+        B --> D[StreamSpooler]
+        D --> E[CatchUpEngine]
     end
 
     subgraph "Visual Layer (SceneTree)"
-        E[Vehicle3D Node]
-        F[Player Node]
-        G[OrbitCameraController]
+        F[Vehicle3D / EntityView3D]
+        G[Player Node]
+        H[OrbitCameraController]
+        I[Implement3D Node]
+        J[HitchSocket3D Node]
     end
 
-    E <-->|Sync State| B
-    F <-->|Sync State| C
-    F --- G
+    F <-->|apply_data / extract_data| B
+    G <-->|Sync State| C
+    G --- H
+    F ---|Dynamic Attachment| J
+    J ---|Signal Bound| I
 ```
 
-### 1. The Logic Phase (SimulationCore)
-- **Location:** `Singletons/SimulationCore.gd` and `Scripts/simulation/`.
+### 1. The Logic Layer (UESS)
+- **Location:** `Scripts/simulation/` and `Scripts/streaming/`.
 - **Purpose:** Authoritative state management and headless simulation.
 - **Components:**
-    - `EntityManager`: Tracks the lifecycle of all entities (Players, Vehicles).
-    - `VehicleData`: A pure `Resource` containing stats (fuel, maintenance) and world transform (pos/yaw).
+    - `EntityManager`: Tracks the lifecycle of all entities via spatial hash chunking and streaming groups.
+    - `EntityData`: A pure `RefCounted` object holding `runtime_id`, `definition_id`, and a dictionary of typed Components (`VehicleComponent`, `TransformComponent`, etc.).
     - `PlayerData`: Persistent player stats and world location.
+    - `CatchUpEngine`: Processes elapsed time on entities during spool wakeup.
+    - `StreamSpooler`: Time-sliced queue processor that creates/destroys 3D Nodes with microsecond budgets.
 
 !!! success "Performance Benefit"
-    We can run the simulation for 100+ vehicles without needing them to be rendered or even have 3D nodes in the SceneTree.
+    We can simulate time passing for thousands of entities without needing them to be rendered or have 3D nodes in the SceneTree.
 
-### 2. The Visual Phase (SceneTree)
-- **Location:** `Scenes/` and `Scripts/`.
+### 2. The Visual Layer (SceneTree)
+- **Location:** `Scenes/` and `Scripts/views/`, `Scripts/vehicles/`.
 - **Purpose:** User interaction, physics processing (GEVP), and rendering.
 - **Components:**
-    - `Vehicle3D`: The physical "puppet" that handles 3D interactions.
-    - `Player`: User-controlled controller using `OrbitCameraController`.
+    - `EntityView3D`: Base "puppet" class for all streamed 3D representations.
+    - `Vehicle3D`: Inherits from `Vehicle` (GEVP) → `EntityView3D`. Handles driving input, camera, and syncs `VehicleComponent` data.
+    - `Implement3D`: Inherits from `EntityView3D`. Handles standardized towing/tool states.
+    - `HitchSocket3D`: Defines structural attachment rules and manages `StreamingGroup` assignments.
 
 ---
 
 ## :tractor: Vehicle Architecture
 
-Vehicles are the most complex entities in the project. Their lifecycle is split:
-- **Persistence:** All steering angles, facing directions, and fuel levels are synced from `Vehicle3D` to `VehicleData` every frame.
-- **Deterministic State:** When a player exits, the logic layer keeps the last known steering and position. This allows for realistic features like "leaving the wheels turned" after parking.
+Vehicles are the most complex entities. Their lifecycle is fully managed by the UESS:
+- **Data-Driven Definitions:** Vehicles are defined in JSON files (`Data/Entities/truck.json`) mapping to Components and a `view_scene`.
+- **Streaming:** `StreamSpooler` instantiates vehicle scenes when their chunk becomes active and destroys them when they leave.
+- **Persistence:** `apply_data()` reads `VehicleComponent` fuel/engine state on spawn. `extract_data()` writes the final physics state back before despawn.
+- **Deterministic State:** Steering angles, wheel positions, and fuel levels survive streaming cycles.
+- **Component-Based Implements:** Vehicle connectivity leverages `HitchSocket3D` components interacting with `Implement3D`, using streaming groups to keep connected chains loaded.
 
 !!! info "Further Reading"
-    For more details see: **[Vehicle Physics](../systems/vehicles.md)**.
+    For more details see: **[Vehicle Physics](../systems/vehicles.md)** and **[UESS Architecture](uess_architecture.md)**.
 
 ---
 
 ## :video_camera: Camera Architecture
 
-The camera system is centralized through **`OrbitCameraController.gd`** to ensure DRY code.
+The camera system is centralized through **OrbitCameraController.gd** to ensure DRY code.
+
 - **Unified Logic:** Both Player and Vehicle use the same orbit and smoothing logic.
 - **Distinct Modes:** Toggleable "Auto-Center" (GTA-style) for vehicles vs. "Movement-Basis" for on-foot players.
 
@@ -72,8 +85,8 @@ The camera system is centralized through **`OrbitCameraController.gd`** to ensur
 
 ## :gear: Data Pipeline
 
-1. **Input:** Player interacts with a 3D Node (`Vehicle3D`).
-2. **Execution:** `Vehicle3D` processes physics and inputs.
-3. **Publish:** `Vehicle3D` pushes its internal state (velocity, angle) to `EntityManager`.
-4. **Simulation:** `EntityManager` updates the authoritative `VehicleData`.
-5. **Persistence:** `VehicleData` can be saved to disk at any time as a `.tres` file.
+1. **Spawn:** `EntityRegistry` creates an `EntityData` from a JSON definition. `EntityManager` registers it and assigns a chunk.
+2. **Stream:** `StreamSpooler` detects the entity in an active chunk, runs `CatchUpEngine`, instantiates the `view_scene`.
+3. **Sync:** `EntityView3D.apply_data()` sets initial position/state. `_physics_process` continuously syncs transforms back.
+4. **Despool:** When the chunk deactivates, `extract_data()` saves the final state, the 3D Node is destroyed.
+5. **Persist:** `EntityData` components can be serialized to JSON for save/load (Phase 7).

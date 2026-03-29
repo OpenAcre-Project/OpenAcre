@@ -7,9 +7,8 @@
 [ext_resource type="PackedScene" uid="uid://bu05efayr4rj3" path="res://Assets/TerrainAssets/Data/roads.glb" id="8_e6b1v"]
 [ext_resource type="Texture2D" uid="uid://dobef47is21v" path="res://Assets/TerrainAssets/Data/textures/asphalt_albedo_height.png" id="9_0qwcn"]
 [ext_resource type="Script" uid="uid://bpp0hjyyxr428" path="res://Scripts/farm/SoilLayerService.gd" id="9_soil_service"]
-[ext_resource type="Script" uid="uid://dle6o4f2r1dg6" path="res://Scripts/world/VehicleManager.gd" id="9_vehicle_manager"]
+
 [ext_resource type="Texture2D" uid="uid://ctpc2r8j1g6xa" path="res://Assets/TerrainAssets/Data/textures/asphalt_normal_roughness.png" id="10_3xaw4"]
-[ext_resource type="Resource" uid="uid://62giv4pyaw2t" path="res://Assets/Vehicles/Data/Vehicles/VehicleCatalog_Default.tres" id="10_vehicle_catalog"]
 [ext_resource type="Script" uid="uid://dc2qjaxsmp3xv" path="res://Scripts/world/MapSpawnPoint.gd" id="18_u8pi1"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
@@ -75,6 +74,12 @@ normal_texture = ExtResource("10_3xaw4")
 heightmap_enabled = true
 heightmap_texture = ExtResource("9_0qwcn")
 
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_0oxj7"]
+height = 8.179018
+radius = 1.313676
+
+[sub_resource type="BoxMesh" id="BoxMesh_64234"]
+
 [node name="MapUS" type="Node3D" unique_id=1934070863]
 script = ExtResource("1_ymbeh")
 field_data_offset = Vector2(1024, 1024)
@@ -96,9 +101,7 @@ script = ExtResource("9_soil_service")
 
 [node name="GridManager" parent="." unique_id=1220356358 instance=ExtResource("3_grid_tscn")]
 
-[node name="VehicleManager" type="Node3D" parent="." unique_id=1745500059]
-script = ExtResource("9_vehicle_manager")
-vehicle_catalog = ExtResource("10_vehicle_catalog")
+
 
 [node name="spawn_main" type="Marker3D" parent="." unique_id=1750642103]
 transform = Transform3D(0.78928775, 0.6140235, 0, -0.61394536, 0.7891873, 0.015951633, 0.009794678, -0.012590429, 0.99987274, 105.46235, 29.95597, 135.36604)
@@ -157,5 +160,16 @@ surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
 
 [node name="city_roads-intersections" parent="Roads_Node/roads" index="14" unique_id=1085943378]
 surface_material_override/0 = SubResource("StandardMaterial3D_3xaw4")
+
+[node name="StaticBody3D" type="StaticBody3D" parent="." unique_id=1626603965]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 102.8827, 34.007454, 106.93421)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D" unique_id=1872307611]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.04801178, 0)
+shape = SubResource("CylinderShape3D_0oxj7")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D" unique_id=138523199]
+transform = Transform3D(3.4728935, 0, 0, 0, 8.483842, 0, 0, 0, 1, 0, 0, 0)
+mesh = SubResource("BoxMesh_64234")
 
 [editable path="Roads_Node/roads"]

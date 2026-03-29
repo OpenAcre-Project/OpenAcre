@@ -15,9 +15,9 @@ class_name PlayerData
 @export var hydration: float = 100.0
 @export var energy: float = 100.0
 
-# Inventory system
+# Inventory system (UESS: ID-based, no ItemInstance references)
 var pockets: InventoryData = InventoryData.new()
-var equipment_back: ItemInstance = null # Slot for a backpack
+var equipment_back: StringName = &"" ## runtime_id of equipped backpack EntityData (has ContainerComponent)
 
 func _init() -> void:
 	# Default pocket settings
@@ -26,8 +26,14 @@ func _init() -> void:
 
 func get_total_encumbrance_mass() -> float:
 	var total: float = pockets.get_current_mass()
-	if equipment_back:
-		total += equipment_back.get_total_mass()
+	if equipment_back != &"" and GameManager.session and GameManager.session.entities:
+		var backpack := GameManager.session.entities.get_entity(equipment_back)
+		if backpack:
+			var item_comp := backpack.get_component(&"item") as ItemComponent
+			if item_comp:
+				total += item_comp.mass_kg
+			# If the backpack has its own inventory (ContainerComponent), 
+			# that weight would be tracked inside its own InventoryData.
 	return total
 
 # Legacy aliases for backwards compat with GameManager.session.entities.set_player_stats

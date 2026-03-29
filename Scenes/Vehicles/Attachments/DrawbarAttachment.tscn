@@ -1,0 +1,65 @@
+[gd_scene format=3 uid="uid://bgn3j5jathfqj"]
+
+[ext_resource type="Script" uid="uid://c4cgkp0i7nieu" path="res://Scripts/vehicles/Implement3D.gd" id="1_63uoo"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plow_detection_big"]
+size = Vector3(1.7536621, 2, 1.9746094)
+
+[sub_resource type="BoxMesh" id="BoxMesh_63uoo"]
+size = Vector3(1.9631348, 1.1694336, 1.2385254)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_1bxal"]
+transparency = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(0.12, 0.9, 0.24, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_63uoo"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1bxal"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_plow"]
+size = Vector3(3, 0.5, 0.5)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_plow_color"]
+albedo_color = Color(0.1, 0.4, 0.1, 1)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_plow"]
+size = Vector3(6.3775635, 1.2308655, 0.76660156)
+
+[node name="DrawbarAttachment" type="RigidBody3D" unique_id=191783416]
+mass = 500.0
+script = ExtResource("1_63uoo")
+simulation_vehicle_id = &"draw"
+required_hitch_type = 1
+
+[node name="HitchPoint" type="Marker3D" parent="." unique_id=35124642]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7258658, 2.1704438)
+
+[node name="DetectionArea" type="Area3D" parent="." unique_id=387554892]
+transform = Transform3D(1.8935407, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5609356, 2.8652396)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DetectionArea" unique_id=1337859789]
+shape = SubResource("BoxShape3D_plow_detection_big")
+
+[node name="DebugTriggerMesh" type="MeshInstance3D" parent="DetectionArea" unique_id=650556789]
+transform = Transform3D(0.8773817, 0, 0, 0, 1.6756907, 0, 0, 0, 1.5468884, 0, 0, 0)
+mesh = SubResource("BoxMesh_63uoo")
+surface_material_override/0 = SubResource("StandardMaterial3D_1bxal")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="." unique_id=1553491100]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 1.4915655, -3.6605132)
+shape = SubResource("BoxShape3D_63uoo")
+
+[node name="MeshInstance3D2" type="MeshInstance3D" parent="." unique_id=616704036]
+transform = Transform3D(2, 0, 0, 0, 2, 0, 0, 0, 2, 0, 1.49, -3.6)
+mesh = SubResource("BoxMesh_1bxal")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="." unique_id=344549370]
+transform = Transform3D(-1.9371372e-07, 0, 1.4781109, 0, 2.136549, 0, -1.5839108, 0, -2.3092268e-08, 0, 1.4393032, -0.30612874)
+mesh = SubResource("BoxMesh_plow")
+surface_material_override/0 = SubResource("StandardMaterial3D_plow_color")
+
+[node name="CollisionShape3D2" type="CollisionShape3D" parent="." unique_id=1038087730]
+transform = Transform3D(-9.0637286e-08, 0, 1, 0, 0.8425316, 0, -0.7411006, 0, -1.5622824e-08, 0.010559081, 1.4286201, -0.2877481)
+shape = SubResource("BoxShape3D_plow")

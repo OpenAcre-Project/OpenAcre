@@ -13,7 +13,16 @@ func try_interact(player: Node3D) -> bool:
 		return false
 
 	var obj: Variant = hit.get("collider")
-	if obj != null and obj.has_method("interact"):
+	
+	if obj is EntityView3D:
+		var view := obj as EntityView3D
+		if view.entity_data:
+			pass # Reserved for future pure-ECS logic
+			
+		if view.has_method("interact"):
+			view.interact(player)
+			return true
+	elif obj != null and obj.has_method("interact"):
 		obj.interact(player)
 		return true
 
@@ -29,9 +38,26 @@ func process_hover(player: CharacterBody3D) -> void:
 		return
 
 	var obj: Variant = hit.get("collider")
-	if obj != null and obj.has_method("interact"):
-		var interact_key: String = GameInput.get_action_binding_text(GameInput.ACTION_INTERACT)
-		var prompt: String = "Interact [%s]" % interact_key
+	var prompt: String = ""
+	var interact_key: String = GameInput.get_action_binding_text(GameInput.ACTION_INTERACT)
+	
+	if obj is EntityView3D:
+		var view := obj as EntityView3D
+		if view.entity_data:
+			if view.entity_data.has_component(&"container"):
+				prompt = "Open Container [%s]" % interact_key
+			elif view.entity_data.has_component(&"seat"):
+				prompt = "Drive Vehicle [%s]" % interact_key
+			else:
+				prompt = "Interact [%s]" % interact_key
+				
+		# Fallback for subclass overrides
+		if view.has_method("get_interaction_prompt"):
+			prompt = view.call("get_interaction_prompt")
+				
+		EventBus.update_crosshair_prompt.emit(prompt)
+	elif obj != null and obj.has_method("interact"):
+		prompt = "Interact [%s]" % interact_key
 		if obj.has_method("get_interaction_prompt"):
 			prompt = obj.get_interaction_prompt()
 		EventBus.update_crosshair_prompt.emit(prompt)

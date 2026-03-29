@@ -1,46 +1,137 @@
 [gd_scene format=3 uid="uid://8s46ope2b1lg"]
 
-[ext_resource type="PackedScene" path="res://Scenes/Vehicles/Vehicle3D.tscn" id="1_vehicle3d_tscn"]
-[ext_resource type="PackedScene" uid="uid://3ceqpxe7d5wf" path="res://Assets/Vehicles/Main_tractor.glb" id="3_h343l"]
+[ext_resource type="PackedScene" uid="uid://dqe7jg65s13g7" path="res://Scenes/Vehicles/Vehicle3D.tscn" id="1_vehicle3d_tscn"]
+[ext_resource type="PackedScene" uid="uid://3ceqpxe7d5wf" path="res://Assets/Vehicles/Truck1Assets/Main_tractor.glb" id="3_h343l"]
+[ext_resource type="Script" uid="uid://chwmmagyuxtsq" path="res://Scripts/vehicles/HitchSocket3D.gd" id="4_hitch_script"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_2s27y"]
+[sub_resource type="Curve" id="Curve_voi7t"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 1), 0.0, 0.0, 0, 0]
+point_count = 2
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_h343l"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_kx25h"]
+size = Vector3(1.0317383, 0.46875, 0.9401398)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5rayx"]
+size = Vector3(1, 0.39648438, 0.98046875)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2i4ea"]
+size = Vector3(1.2521973, 0.4189453, 1.3613281)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_y0si2"]
+size = Vector3(1.2470703, 0.36035156, 1.3708496)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_hitch_area"]
+size = Vector3(1.9631348, 1.1694336, 1.2385254)
+
+[sub_resource type="BoxMesh" id="BoxMesh_hitch_debug"]
+size = Vector3(1.9631348, 1.1694336, 1.2385254)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hitch_debug"]
+transparency = 1
+cull_mode = 2
+shading_mode = 0
+albedo_color = Color(0.12, 0.9, 0.24, 0.2)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_spring_debug"]
+shading_mode = 0
+albedo_color = Color(1, 0, 0, 1)
+
+[sub_resource type="SphereMesh" id="SphereMesh_spring_debug"]
+material = SubResource("StandardMaterial3D_spring_debug")
+radius = 0.2
+height = 0.4
 
 [node name="Truck" unique_id=1818145156 instance=ExtResource("1_vehicle3d_tscn")]
-vehicle_spec_id = &"truck"
-wheel_front_left_visual_path = NodePath("Main_tractor/Wheels/EmptyFL/WheelFL")
-wheel_front_right_visual_path = NodePath("Main_tractor/Wheels/EmptyFR/WheelFR")
-wheel_rear_left_visual_path = NodePath("Main_tractor/Wheels/EmptyRL/WheelRL")
-wheel_rear_right_visual_path = NodePath("Main_tractor/Wheels/EmptyRR/WheelRR")
-torque_curve = null
+wheel_front_left_visual_path = NodePath("Main_tractor/Main Truck/Wheels/EmptyFL/Empty")
+wheel_front_right_visual_path = NodePath("Main_tractor/Main Truck/Wheels/EmptyFR/Empty_001")
+wheel_rear_left_visual_path = NodePath("Main_tractor/Main Truck/Wheels/EmptyRL/Empty_002")
+wheel_rear_right_visual_path = NodePath("Main_tractor/Main Truck/Wheels/EmptyRR/Empty_003")
+steering_speed = 15.0
+countersteer_speed = 0.1
+steering_speed_decay = 0.3
+steering_slip_assist = 3.0
+countersteer_assist = 0.2
+torque_curve = SubResource("Curve_voi7t")
 
-[node name="CollisionShape3D" parent="." index="0"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5648072, 0.042382956)
-debug_color = Color(0.8414612, 0.0011202913, 0.92115015, 0.41960785)
+[node name="CollisionShape3D" parent="." index="0" unique_id=1487777444]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.208667, -0.17854005)
 
-[node name="VehicleVisual" parent="." index="1"]
+[node name="WheelCollisionFL" parent="." index="1" unique_id=1487777445]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.1696187, 0.420583, -1.5322679)
+shape = SubResource("BoxShape3D_kx25h")
+
+[node name="WheelCollisionFR" parent="." index="2" unique_id=1487777446]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 1.1867211, 0.42465824, -1.5027223)
+shape = SubResource("BoxShape3D_5rayx")
+
+[node name="WheelCollisionRL" parent="." index="3" unique_id=1487777447]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -1.1828315, 0.6284778, 1.5731759)
+shape = SubResource("BoxShape3D_2i4ea")
+
+[node name="WheelCollisionRR" parent="." index="4" unique_id=1487777448]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 1.2001328, 0.6328465, 1.582729)
+shape = SubResource("BoxShape3D_y0si2")
+
+[node name="VehicleVisual" parent="." index="5" unique_id=757370077]
 visible = false
 
-[node name="WheelFrontLeft" parent="." index="2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.889, 0, -1.174)
+[node name="WheelFrontLeft" parent="." index="6" unique_id=1592588330 node_paths=PackedStringArray("wheel_node")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.889, -0.025056958, -1.5429718)
+wheel_node = NodePath("../Main_tractor/Main Truck/Wheels/EmptyFL/Empty")
 
-[node name="WheelFrontRight" parent="." index="3"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.86, 0, -1.231)
+[node name="WheelFrontRight" parent="." index="7" unique_id=894528239 node_paths=PackedStringArray("wheel_node")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.86, 0.0015882254, -1.5009794)
+wheel_node = NodePath("../Main_tractor/Main Truck/Wheels/EmptyFR/Empty_001")
 
-[node name="WheelRearLeft" parent="." index="4"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.936, 0, 1.271)
+[node name="Main_tractor" parent="." index="8" unique_id=1142219548 instance=ExtResource("3_h343l")]
+transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, -0.33781576, 0)
 
-[node name="WheelRearRight" parent="." index="5"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.901, 0, 1.24)
+[node name="WheelRearLeft" parent="." index="9" unique_id=1238676691 node_paths=PackedStringArray("wheel_node")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.936, -0.045776367, 1.6309725)
+wheel_node = NodePath("../Main_tractor/Main Truck/Wheels/EmptyRL/Empty_002")
 
-[node name="Main_tractor" parent="." index="8" unique_id=1837866864 instance=ExtResource("3_h343l")]
-transform = Transform3D(-1, 0, -1.509958e-07, 0, 1, 0, 1.509958e-07, 0, -1, 0, 0, 0)
+[node name="WheelRearRight" parent="." index="10" unique_id=192246062 node_paths=PackedStringArray("wheel_node")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.901, -0.048290968, 1.5909729)
+wheel_node = NodePath("../Main_tractor/Main Truck/Wheels/EmptyRR/Empty_003")
 
-[node name="attacherJoints" parent="Main_tractor" index="0" unique_id=392024502]
-surface_material_override/0 = SubResource("StandardMaterial3D_2s27y")
+[node name="RearHitch" parent="AttachmentSockets" parent_id_path=PackedInt32Array(1760039775) index="0" unique_id=2086288625]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65468407, 2.7078075)
+script = ExtResource("4_hitch_script")
 
-[node name="cabin" parent="Main_tractor" index="1" unique_id=140642134]
-surface_material_override/0 = SubResource("StandardMaterial3D_h343l")
+[node name="HitchPoint" parent="AttachmentSockets/RearHitch" index="0" unique_id=1793011151]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2776556, 0.1749258)
+
+[node name="DetectionArea" parent="AttachmentSockets/RearHitch" index="1" unique_id=1794831212]
+visible = false
+
+[node name="HitchRay" parent="AttachmentSockets/RearHitch" index="2" unique_id=1563746861]
+visible = false
+
+[node name="DrawbarHitch" type="Node3D" parent="AttachmentSockets" parent_id_path=PackedInt32Array(1760039775) index="1" unique_id=891992712]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.65468407, 2.7078075)
+script = ExtResource("4_hitch_script")
+hitch_type = 1
+can_lift = false
+
+[node name="HitchPoint" type="Marker3D" parent="AttachmentSockets/DrawbarHitch" index="0" unique_id=345534457]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6663463, 0.16585636)
+
+[node name="DetectionArea" type="Area3D" parent="AttachmentSockets/DrawbarHitch" index="1" unique_id=1660084151]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="AttachmentSockets/DrawbarHitch/DetectionArea" index="0" unique_id=66061913]
+shape = SubResource("BoxShape3D_hitch_area")
+
+[node name="DebugTriggerMesh" type="MeshInstance3D" parent="AttachmentSockets/DrawbarHitch/DetectionArea" index="1" unique_id=610726677]
+mesh = SubResource("BoxMesh_hitch_debug")
+surface_material_override/0 = SubResource("StandardMaterial3D_hitch_debug")
+
+[node name="HitchRay" type="RayCast3D" parent="AttachmentSockets/DrawbarHitch" index="2" unique_id=1120611718]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+target_position = Vector3(0, -0.8, 0)
+collision_mask = 4294967295
+hit_from_inside = true
+
+[node name="SpringDebug" type="MeshInstance3D" parent="AttachmentSockets/DrawbarHitch/HitchRay" index="0" unique_id=936900442]
+mesh = SubResource("SphereMesh_spring_debug")
 
 [editable path="Main_tractor"]

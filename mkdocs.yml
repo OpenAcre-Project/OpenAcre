@@ -20,7 +20,10 @@ nav:
       - Chunk System: rendering/chunk_system.md
   - Developer:
       - Console: dev/developer_console.md
+      - Vehicle Attachments: dev/advanced_attachments.md
       - Addon Patches: dev/addon_patches.md
+  - Dev Log:
+      - Plow Attachment: dev_log/plow_attachment.md
 theme:
   name: material
   language: en
@@ -74,6 +77,7 @@ markdown_extensions:
 
 extra_css:
   - Assets/stylesheets/extra.css
+  - stylesheets/technical-docs.css
 
 extra_javascript:
   - javascripts/mathjax.js

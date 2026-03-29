@@ -13,6 +13,9 @@ class_name OrbitCameraController
 @export var auto_center_delay: float = 1.5
 @export var auto_center_speed: float = 2.0
 @export var is_auto_center_enabled: bool = false
+@export var is_velocity_alignment_enabled: bool = false
+@export var velocity_alignment_factor: float = 0.5
+@export var velocity_threshold: float = 0.5
 
 @export_group("Constraints")
 @export var height_min: float = 1.2
@@ -29,6 +32,7 @@ var _target_distance: float = 4.0
 var yaw_global: float = 0.0
 var pitch: float = 0.0
 var _last_input_time: float = 0.0
+var _smoothed_target_yaw: float = 0.0
 
 func setup(spring_arm: SpringArm3D, camera: Camera3D) -> void:
 	_spring_arm = spring_arm
@@ -40,6 +44,7 @@ func setup(spring_arm: SpringArm3D, camera: Camera3D) -> void:
 	# Initialize angles from the current spring arm rotation
 	var parent_rotation_y := _spring_arm.get_parent_node_3d().global_rotation.y if _spring_arm.get_parent_node_3d() else 0.0
 	yaw_global = parent_rotation_y + _spring_arm.rotation.y
+	_smoothed_target_yaw = yaw_global
 	pitch = _spring_arm.rotation.x
 	_last_input_time = Time.get_ticks_msec()
 
@@ -75,8 +80,30 @@ func update(delta: float, is_input_blocked: bool) -> void:
 	# Calculate and apply smooth rotation
 	var parent_rotation_y := _spring_arm.get_parent_node_3d().global_rotation.y if _spring_arm.get_parent_node_3d() else 0.0
 	
-	if is_auto_center_enabled and Time.get_ticks_msec() - _last_input_time > auto_center_delay * 1000:
-		yaw_global = lerp_angle(yaw_global, parent_rotation_y, auto_center_speed * delta)
+	if not is_input_blocked and Time.get_ticks_msec() - _last_input_time > auto_center_delay * 1000:
+		if is_velocity_alignment_enabled:
+			var parent_node := _spring_arm.get_parent_node_3d()
+			var velocity: Vector3 = Vector3.ZERO
+			if parent_node is RigidBody3D:
+				velocity = parent_node.linear_velocity
+			elif parent_node is CharacterBody3D:
+				velocity = parent_node.velocity
+			
+			var horizontal_velocity := Vector2(velocity.x, velocity.z)
+			if horizontal_velocity.length() > velocity_threshold:
+				var current_speed := velocity.length()
+				var actual_alignment_speed := velocity_alignment_factor * current_speed
+				var raw_target_yaw := atan2(-horizontal_velocity.x, -horizontal_velocity.y)
+				_smoothed_target_yaw = lerp_angle(_smoothed_target_yaw, raw_target_yaw, actual_alignment_speed * delta)
+				yaw_global = lerp_angle(yaw_global, _smoothed_target_yaw, actual_alignment_speed * delta)
+			else:
+				# Keep smoothed target in sync when not aligning to avoid pops
+				_smoothed_target_yaw = yaw_global
+		elif is_auto_center_enabled:
+			yaw_global = lerp_angle(yaw_global, parent_rotation_y, auto_center_speed * delta)
+	else:
+		# During manual input or when blocked, sync the smoothed target to current yaw
+		_smoothed_target_yaw = yaw_global
 	
 	var target_local_yaw: float = wrapf(yaw_global - parent_rotation_y, -PI, PI)
 	

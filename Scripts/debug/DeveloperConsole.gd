@@ -4,6 +4,7 @@ extends CanvasLayer
 @export var max_history_lines: int = 1000
 @export var spawn_distance_from_player: float = 6.0
 @export var default_spawn_count: int = 1
+@export var auto_run_commands: Array[String] = ["st"]
 
 var _panel: Panel
 var _log: RichTextLabel
@@ -42,6 +43,15 @@ func _ready() -> void:
 
 	# Subscribe to the centralized game log
 	EventBus.log_message.connect(Callable(self , "_on_game_log_message"))
+	
+	# Auto-run commands with a small delay to ensure world/player initialization
+	_run_auto_commands_deferred()
+
+func _run_auto_commands_deferred() -> void:
+	await get_tree().create_timer(0.2).timeout
+	for cmd in auto_run_commands:
+		_print_line("[color=gray][Auto-run] > %s[/color]" % cmd)
+		_execute_command(cmd)
 
 func _on_game_log_message(text: String, level: int) -> void:
 	# 0 = INFO, 1 = WARN, 2 = ERROR
@@ -67,6 +77,7 @@ func _register_all_commands() -> void:
 	_register_command("godmode", "Toggle player noclip free-fly mode", "godmode", "_cmd_godmode", ["fly"])
 	_register_command("inventory", "List all items currently in player pockets", "inv", "_cmd_inventory", ["inv"])
 	_register_command("keybinds", "List all game keybinds", "keybinds", "_cmd_keybinds")
+	_register_command("st", "Spawn tractor and plow in position", "spawntest [vehicle_spec] [plow_alias]", "_cmd_spawn_test")
 
 func _register_command(cmd_name: String, desc: String, usage: String, method: String, aliases: Array[String] = []) -> void:
 	var cmd := CommandDef.new(cmd_name, desc, usage, method, aliases)
@@ -262,27 +273,13 @@ func _cmd_spawn(parts: Array[String]) -> void:
 	if parts[1].to_lower() == "list":
 		var aliases := _spawn_registry.keys()
 		aliases.sort()
-		_print_line("Spawn aliases: " + ", ".join(aliases))
-		var manager := _get_vehicle_manager()
-		if manager != null:
-			if manager.has_method("get_spawnable_brands"):
-				var brands_any: Variant = manager.call("get_spawnable_brands")
-				if brands_any is Array and not (brands_any as Array).is_empty():
-					var brand_names: Array[String] = []
-					for item: Variant in brands_any:
-						if item is String:
-							brand_names.append(item)
-					brand_names.sort()
-					_print_line("Vehicle brands: " + ", ".join(brand_names))
-			if manager.has_method("get_spawnable_spec_ids"):
-				var specs_any: Variant = manager.call("get_spawnable_spec_ids")
-				if specs_any is Array and not (specs_any as Array).is_empty():
-					var spec_names: Array[String] = []
-					for item: Variant in specs_any:
-						if item is StringName or item is String:
-							spec_names.append(String(item))
-					spec_names.sort()
-					_print_line("Vehicle specs: " + ", ".join(spec_names))
+		_print_line("Scene aliases: " + ", ".join(aliases))
+		
+		var specs: Array[String] = []
+		for key: Variant in EntityRegistry._definitions.keys():
+			specs.append(String(key))
+		specs.sort()
+		_print_line("Entity Registry (UESS): " + ", ".join(specs))
 		return
 
 	var alias := parts[1].to_lower()
@@ -298,6 +295,57 @@ func _cmd_spawn(parts: Array[String]) -> void:
 		return
 
 	_spawn_by_scene_path(String(_spawn_registry[alias]), count)
+
+func _cmd_spawn_test(parts: Array[String]) -> void:
+	var vehicle_id_to_spawn := "vehicle.truck"
+	var implement_id_to_spawn := "vehicle.plow" # "vehicle.drawbar"
+	
+	if parts.size() >= 2: vehicle_id_to_spawn = parts[1]
+	if parts.size() >= 3: implement_id_to_spawn = parts[2]
+	
+	var origin: Vector3 = _get_spawn_origin()
+	var player: Node3D = get_tree().get_first_node_in_group("player") as Node3D
+	var yaw: float = player.rotation.y if player != null else 0.0
+	var forward: Vector3 = - player.global_basis.z.normalized() if player != null else Vector3.FORWARD
+	
+	_print_line("Setting up test rig: Vehicle=%s, Implement=%s" % [vehicle_id_to_spawn, implement_id_to_spawn])
+	
+	# Spawn Tractor far away (facing same way)
+	var tractor_pos: Vector3 = origin + forward * 6.0
+	_spawn_vehicle(vehicle_id_to_spawn, tractor_pos, yaw)
+	
+	# Spawn Plow close-ish (behind tractor)
+	var plow_pos := origin - forward * 1.0
+	_spawn_vehicle(implement_id_to_spawn, plow_pos, yaw + 3.14)
+
+func _spawn_vehicle(alias: String, pos: Vector3, yaw: float) -> void:
+	var def_id: StringName = _resolve_entity_def_id(alias)
+	if def_id == &"":
+		_print_line("EntityRegistry: Unknown definition/alias: " + alias)
+		return
+		
+	var entity: EntityData = EntityRegistry.create_entity(def_id)
+	if entity:
+		var tf: TransformComponent = entity.get_transform()
+		if tf:
+			tf.world_position = pos
+			tf.world_rotation_radians = yaw
+		GameManager.session.entities.register_entity(entity)
+		_print_line("Spawned UESS Entity: " + String(def_id))
+
+func _spawn_by_alias(alias: String, pos: Vector3, yaw: float) -> void:
+	if not _spawn_registry.has(alias.to_lower()):
+		_print_line("Unknown implement alias: " + alias)
+		return
+	var scene_path: String = _spawn_registry[alias.to_lower()]
+	var packed := load(scene_path)
+	if packed is PackedScene:
+		var instance: Node = packed.instantiate()
+		if instance is Node3D:
+			instance.position = pos
+			instance.rotation.y = yaw
+		get_tree().current_scene.add_child(instance)
+		_print_line("Spawned implement: " + scene_path)
 
 func _cmd_spawn_scene(parts: Array[String]) -> void:
 	if parts.size() < 2:
@@ -360,15 +408,28 @@ func _cmd_inventory(_parts: Array[String] = []) -> void:
 		return
 		
 	var pockets: InventoryData = player_data.pockets
-	if pockets.items.is_empty():
+	if pockets.entity_ids.is_empty():
 		_print_line("Inventory is empty.")
 		return
 		
 	_print_line("--- Player Inventory ---")
-	for i in range(pockets.items.size()):
-		var item: ItemInstance = pockets.items[i]
-		_print_line("[%d] %s x%d" % [i, item.definition_id, item.stack])
+	var em := GameManager.session.entities as EntityManager
+	for i in range(pockets.entity_ids.size()):
+		var eid: StringName = pockets.entity_ids[i]
+		var entity := em.get_entity(eid)
+		if entity:
+			var stack_count: int = 1
+			var stack_comp := entity.get_component(&"stackable") as StackableComponent
+			if stack_comp:
+				stack_count = stack_comp.count
+			var comp_list: Array = []
+			for comp: Component in entity.get_all_components():
+				comp_list.append(String(comp.type_id))
+			_print_line("[%d] %s x%d  [%s]  (id: %s)" % [i, entity.definition_id, stack_count, ", ".join(comp_list), eid])
+		else:
+			_print_line("[%d] <missing entity: %s>" % [i, eid])
 	_print_line("Total Mass: %.2f / %.2f kg" % [pockets.get_current_mass(), pockets.max_mass])
+	_print_line("Total Volume: %.2f / %.2f L" % [pockets.get_total_volume(), pockets.max_volume])
 
 func _cmd_keybinds(_parts: Array[String] = []) -> void:
 	_print_line("--- Keybindings ---")
@@ -460,6 +521,8 @@ func _spawn_by_scene_path(scene_path: String, count: int) -> void:
 		spawned += 1
 
 	_print_line("Spawned %d x %s" % [spawned, scene_path])
+	if scene_path.begins_with("res://Scenes/Vehicles/"):
+		_print_line("Warning: Scene-spawned vehicles bypass UESS streaming/despawn. Use Entity IDs like 'vehicle.truck' with spawn.")
 
 func _compute_spawn_position(origin: Vector3, index: int) -> Vector3:
 	if index == 0:
@@ -501,7 +564,8 @@ func _snap_spawn_to_ground(origin: Vector3) -> Vector3:
 func _build_spawn_registry() -> void:
 	_spawn_registry.clear()
 	_register_default_spawn_alias("apple", "res://Scenes/Interactables/Apple.tscn")
-	_register_default_spawn_alias("plow_attachment", "res://Scenes/Vehicles/Attachments/PlowAttachment.tscn")
+	_register_default_spawn_alias("plow", "res://Scenes/Vehicles/Attachments/PlowAttachment.tscn")
+	_register_default_spawn_alias("draw", "res://Scenes/Vehicles/Attachments/DrawbarAttachment.tscn")
 	_register_default_spawn_alias("player", "res://Scenes/Actors/Player.tscn")
 
 	_scan_scenes_recursive("res://Scenes")
@@ -526,32 +590,41 @@ func _scan_scenes_recursive(path: String) -> void:
 	dir.list_dir_end()
 
 func _spawn_vehicle_brand(alias: String, count: int) -> bool:
-	var manager := _get_vehicle_manager()
-	if manager == null:
+	var def_id: StringName = _resolve_entity_def_id(alias)
+	if def_id == &"":
 		return false
 
 	var origin := _get_spawn_origin()
 	var spawned := 0
 	for i in range(count):
 		var spawn_pos := _compute_spawn_position(origin, i)
-		var vehicle_id_any: Variant = &""
-		
-		# Try brand first
-		if manager.has_method("spawn_vehicle_by_brand"):
-			vehicle_id_any = manager.call("spawn_vehicle_by_brand", alias, spawn_pos, 0.0)
-		
-		# Fallback to spec_id if brand failed
-		if (vehicle_id_any == null or String(vehicle_id_any).is_empty()) and manager.has_method("spawn_vehicle_by_spec"):
-			vehicle_id_any = manager.call("spawn_vehicle_by_spec", StringName(alias), spawn_pos, 0.0)
-
-		if (vehicle_id_any is StringName and vehicle_id_any != &"") or (vehicle_id_any is String and not String(vehicle_id_any).is_empty()):
+		var entity: EntityData = EntityRegistry.create_entity(def_id)
+		if entity:
+			var tf: TransformComponent = entity.get_transform()
+			if tf:
+				tf.world_position = spawn_pos
+				tf.world_rotation_radians = 0.0
+			GameManager.session.entities.register_entity(entity)
 			spawned += 1
 
 	if spawned > 0:
-		_print_line("Spawned %d x vehicle '%s'" % [spawned, alias])
+		_print_line("Spawned %d x UESS Entity '%s'" % [spawned, String(def_id)])
 		return true
 
 	return false
+
+func _resolve_entity_def_id(alias: String) -> StringName:
+	var cleaned := alias.strip_edges().to_lower()
+	var candidates: Array[StringName] = [
+		StringName(cleaned),
+		StringName("vehicle." + cleaned),
+		StringName("item." + cleaned)
+	]
+
+	for candidate: StringName in candidates:
+		if EntityRegistry.has_def(candidate):
+			return candidate
+	return &""
 
 func _get_vehicle_manager() -> Node:
 	return get_tree().get_first_node_in_group("vehicle_manager")

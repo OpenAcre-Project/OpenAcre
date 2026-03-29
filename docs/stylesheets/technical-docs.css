@@ -1,0 +1,59 @@
+/* Technical docs polish for readability and equation-heavy pages */
+:root {
+  --tech-callout: color-mix(in srgb, var(--md-primary-fg-color) 28%, transparent);
+  --tech-surface: color-mix(in srgb, var(--md-default-bg-color) 92%, #0b0f18 8%);
+  --tech-border: color-mix(in srgb, var(--md-default-fg-color) 24%, transparent);
+}
+
+.md-typeset {
+  line-height: 1.72;
+}
+
+.md-typeset h1,
+.md-typeset h2,
+.md-typeset h3 {
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+
+.md-typeset h2 {
+  border-bottom: 1px solid var(--tech-border);
+  padding-bottom: 0.3rem;
+  margin-top: 2rem;
+}
+
+.md-typeset h3 {
+  margin-top: 1.25rem;
+}
+
+.md-typeset p {
+  max-width: 78ch;
+}
+
+.md-typeset ol {
+  margin-top: 0.4rem;
+}
+
+.md-typeset ol li {
+  margin: 0.5rem 0;
+}
+
+.md-typeset .arithmatex {
+  font-size: 1.02em;
+}
+
+.md-typeset .arithmatex + .arithmatex,
+.md-typeset .arithmatex + p {
+  margin-top: 0.35rem;
+}
+
+.md-typeset .admonition.abstract {
+  border-left: 0.2rem solid var(--tech-callout);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tech-callout) 16%, transparent), transparent 46%);
+}
+
+@media screen and (max-width: 76.1875em) {
+  .md-typeset p {
+    max-width: 100%;
+  }
+}

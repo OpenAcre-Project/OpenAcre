@@ -2,13 +2,22 @@ class_name EntityManager
 extends RefCounted
 
 const PlayerDataRef = preload("res://Scripts/simulation/resources/PlayerData.gd")
-const VehicleDataRef = preload("res://Scripts/simulation/resources/VehicleData.gd")
+
 
 signal player_data_changed(player_id: StringName, data: PlayerData)
-signal vehicle_data_changed(vehicle_id: StringName, data: VehicleData)
+signal entity_registered(entity_id: StringName)
 
 var _players: Dictionary = {}
-var _vehicles: Dictionary = {}
+
+# UESS Phase 1 & 2: General Entities and Chunking
+var _entities: Dictionary = {}
+var _chunks: Dictionary = {} # Vector2i -> Array[StringName]
+var _children_by_parent: Dictionary = {} # StringName (parent_id) -> Array[StringName] (child_ids)
+const CHUNK_SIZE: float = 64.0 # meters
+
+# Streaming Groups (Phase 6)
+var _streaming_groups: Dictionary = {} # StringName (group_id) -> Array[StringName] (entity_ids)
+var _entity_to_group: Dictionary = {} # StringName (entity_id) -> StringName (group_id)
 
 func tick(_delta: float) -> void:
 	pass
@@ -22,8 +31,7 @@ func _on_minute_passed() -> void:
 			var data: PlayerData = _players[player_id_any]
 			data.tick_survival_minute()
 
-func has_vehicle(vehicle_id: StringName) -> bool:
-	return _vehicles.has(vehicle_id)
+
 
 func ensure_player(player_id: StringName = &"player.main") -> PlayerData:
 	if not _players.has(player_id):
@@ -32,46 +40,12 @@ func ensure_player(player_id: StringName = &"player.main") -> PlayerData:
 		_players[player_id] = data
 	return _players[player_id]
 
-func ensure_vehicle(vehicle_id: StringName) -> VehicleData:
-	if vehicle_id == &"":
-		GameLog.warn("GameManager.session.entities.ensure_vehicle called with an empty id")
-		vehicle_id = &"vehicle.unknown"
 
-	if not _vehicles.has(vehicle_id):
-		var data := VehicleDataRef.new()
-		data.vehicle_id = vehicle_id
-		_vehicles[vehicle_id] = data
-	return _vehicles[vehicle_id]
 
 func get_player(player_id: StringName = &"player.main") -> PlayerData:
 	return ensure_player(player_id)
 
-func get_vehicle(vehicle_id: StringName) -> VehicleData:
-	return ensure_vehicle(vehicle_id)
 
-func register_vehicle(
-	vehicle_id: StringName,
-	spec_id: StringName,
-	world_position: Vector3,
-	world_yaw_radians: float,
-	fuel_level: float = 100.0,
-	maintenance: float = 100.0
-) -> VehicleData:
-	var data := ensure_vehicle(vehicle_id)
-	data.ensure_tank(&"tank.fuel", maxf(100.0, fuel_level))
-	data.spec_id = spec_id
-	data.set_transform(world_position, world_yaw_radians)
-	data.fuel_level = fuel_level
-	data.maintenance = maintenance
-	vehicle_data_changed.emit(vehicle_id, data)
-	return data
-
-func get_vehicle_ids() -> Array[StringName]:
-	var ids: Array[StringName] = []
-	for key_any: Variant in _vehicles.keys():
-		if key_any is StringName:
-			ids.append(key_any)
-	return ids
 
 func set_player_transform(player_id: StringName, world_position: Vector3, world_yaw_radians: float) -> void:
 	var data := ensure_player(player_id)
@@ -89,46 +63,201 @@ func set_player_active_vehicle(player_id: StringName, vehicle_id: StringName) ->
 	data.active_vehicle_id = vehicle_id
 	player_data_changed.emit(player_id, data)
 
-func set_vehicle_state(
-	vehicle_id: StringName,
-	world_position: Vector3,
-	world_yaw_radians: float,
-	speed_mps: float,
-	steering_input: float,
-	occupant_player_id: StringName
-) -> void:
-	var data := ensure_vehicle(vehicle_id)
-	data.set_transform(world_position, world_yaw_radians)
-	data.speed_mps = speed_mps
-	data.steering_input = steering_input
-	data.occupant_player_id = occupant_player_id
-	vehicle_data_changed.emit(vehicle_id, data)
 
-func set_vehicle_stats(vehicle_id: StringName, fuel_level: float, engine_temp_celsius: float) -> void:
-	var data := ensure_vehicle(vehicle_id)
-	data.fuel_level = fuel_level
-	data.engine_temp_celsius = engine_temp_celsius
-	vehicle_data_changed.emit(vehicle_id, data)
 
-func set_vehicle_maintenance(vehicle_id: StringName, maintenance: float) -> void:
-	var data := ensure_vehicle(vehicle_id)
-	data.maintenance = maintenance
-	vehicle_data_changed.emit(vehicle_id, data)
+# ==========================================
+# UESS: General Entity & Chunk Management
+# ==========================================
+func register_entity(entity: EntityData) -> void:
+	if _entities.has(entity.runtime_id):
+		var previous: EntityData = _entities[entity.runtime_id] as EntityData
+		if previous != null:
+			_unlink_child_from_parent(entity.runtime_id, previous.parent_id)
+	_entities[entity.runtime_id] = entity
+	_link_child_to_parent(entity.runtime_id, entity.parent_id)
+	var tf: TransformComponent = entity.get_transform()
+	if tf != null:
+		_update_entity_chunk_internal(entity, tf)
+	entity_registered.emit(entity.runtime_id)
 
-func get_nearby_vehicle_ids(center: Vector3, radius: float) -> Array[StringName]:
-	var result: Array[StringName] = []
-	if radius <= 0.0:
-		return result
+func remove_entity(entity_id: StringName) -> void:
+	if not _entities.has(entity_id): return
 
-	var radius_sq := radius * radius
-	for key_any: Variant in _vehicles.keys():
-		if not (key_any is StringName):
+	var removal_order: Array[StringName] = []
+	var stack: Array[StringName] = [entity_id]
+	var visited: Dictionary = {}
+
+	while not stack.is_empty():
+		var current_id: StringName = stack.pop_back()
+		if visited.has(current_id):
 			continue
-		var vehicle_id := key_any as StringName
-		var data: VehicleData = _vehicles[vehicle_id]
-		if not data.has_world_transform:
-			continue
-		if data.world_position.distance_squared_to(center) <= radius_sq:
-			result.append(vehicle_id)
+		visited[current_id] = true
 
-	return result
+		if not _entities.has(current_id):
+			continue
+
+		removal_order.append(current_id)
+		for child_id: StringName in _get_children(current_id):
+			stack.append(child_id)
+
+	# Remove deepest children first so parent links can be cleaned safely.
+	for idx: int in range(removal_order.size() - 1, -1, -1):
+		var current_id: StringName = removal_order[idx]
+		if not _entities.has(current_id):
+			continue
+
+		var current_entity: EntityData = _entities[current_id] as EntityData
+		if current_entity == null:
+			_entities.erase(current_id)
+			_clear_children_index(current_id)
+			continue
+
+		var tf := current_entity.get_transform()
+		if tf != null:
+			_remove_from_chunk(current_id, tf.chunk_id)
+
+		_unlink_child_from_parent(current_id, current_entity.parent_id)
+		_clear_children_index(current_id)
+		remove_entity_from_group(current_id)
+		_entities.erase(current_id)
+
+func get_entity(entity_id: StringName) -> EntityData:
+	return _entities.get(entity_id, null)
+
+## Dynamically resolves chunk ID by traversing parent hierarchy
+func get_entity_chunk_id(entity_id: StringName) -> Vector2i:
+	var entity: EntityData = get_entity(entity_id) as EntityData
+	if not entity: return Vector2i.ZERO
+	if entity.parent_id != &"":
+		return get_entity_chunk_id(entity.parent_id)
+	var tf: TransformComponent = entity.get_transform()
+	if tf: return tf.chunk_id
+	return Vector2i.ZERO
+
+func update_entity_transform(entity_id: StringName, new_pos: Vector3, new_rot: float) -> void:
+	var entity: EntityData = get_entity(entity_id)
+	if entity == null: return
+	
+	var tf: TransformComponent = entity.get_transform()
+	if tf == null: return
+	
+	tf.world_position = new_pos
+	tf.world_rotation_radians = new_rot
+	_update_entity_chunk_internal(entity, tf)
+
+func _update_entity_chunk_internal(entity: EntityData, tf: TransformComponent) -> void:
+	# Ignore hierarchical children for rendering chunks
+	if entity.parent_id != &"":
+		_remove_from_chunk(entity.runtime_id, tf.chunk_id)
+		return
+		
+	var new_chunk_id := Vector2i(floor(tf.world_position.x / CHUNK_SIZE), floor(tf.world_position.z / CHUNK_SIZE))
+	
+	# Only update if chunk changed or entity isn't properly registered in the target chunk yet
+	if new_chunk_id != tf.chunk_id or not _chunks.has(tf.chunk_id) or not _chunks[tf.chunk_id].has(entity.runtime_id):
+		_remove_from_chunk(entity.runtime_id, tf.chunk_id)
+		tf.chunk_id = new_chunk_id
+		if not _chunks.has(new_chunk_id):
+			_chunks[new_chunk_id] = [] as Array[StringName]
+		if not _chunks[new_chunk_id].has(entity.runtime_id):
+			_chunks[new_chunk_id].append(entity.runtime_id)
+
+func _remove_from_chunk(entity_id: StringName, chunk_id: Vector2i) -> void:
+	if _chunks.has(chunk_id):
+		_chunks[chunk_id].erase(entity_id)
+		if _chunks[chunk_id].is_empty():
+			_chunks.erase(chunk_id)
+
+func _link_child_to_parent(child_id: StringName, parent_id: StringName) -> void:
+	if parent_id == &"":
+		return
+	if not _children_by_parent.has(parent_id):
+		_children_by_parent[parent_id] = [] as Array[StringName]
+	var children: Array[StringName] = _children_by_parent[parent_id]
+	if not children.has(child_id):
+		children.append(child_id)
+
+func _unlink_child_from_parent(child_id: StringName, parent_id: StringName) -> void:
+	if parent_id == &"":
+		return
+	if not _children_by_parent.has(parent_id):
+		return
+	var children: Array[StringName] = _children_by_parent[parent_id]
+	children.erase(child_id)
+	if children.is_empty():
+		_children_by_parent.erase(parent_id)
+
+func _clear_children_index(parent_id: StringName) -> void:
+	if _children_by_parent.has(parent_id):
+		_children_by_parent.erase(parent_id)
+
+func _get_children(parent_id: StringName) -> Array[StringName]:
+	if _children_by_parent.has(parent_id):
+		return (_children_by_parent[parent_id] as Array[StringName]).duplicate()
+	return [] as Array[StringName]
+
+## Assigns a parent to an entity, removing it from spatial chunks.
+## Used when an item enters an inventory: the entity stops being streamed/rendered
+## but remains in _entities for the flat-database save system.
+func set_entity_parent(entity_id: StringName, new_parent_id: StringName) -> void:
+	var entity: EntityData = get_entity(entity_id)
+	if not entity: return
+	if entity.parent_id == new_parent_id:
+		return
+
+	_unlink_child_from_parent(entity_id, entity.parent_id)
+	entity.parent_id = new_parent_id
+	_link_child_to_parent(entity_id, new_parent_id)
+	var tf: TransformComponent = entity.get_transform()
+	if tf:
+		_update_entity_chunk_internal(entity, tf)
+
+## Clears an entity's parent and re-registers it into the spatial chunk system
+## at the given world position. StreamSpooler will automatically detect and spawn it.
+## Used when an item is dropped from an inventory back into the world.
+func clear_entity_parent(entity_id: StringName, new_world_pos: Vector3, new_rot: float) -> void:
+	var entity: EntityData = get_entity(entity_id)
+	if not entity: return
+	_unlink_child_from_parent(entity_id, entity.parent_id)
+	entity.parent_id = &""
+	var tf: TransformComponent = entity.get_transform()
+	if tf:
+		tf.world_position = new_world_pos
+		tf.world_rotation_radians = new_rot
+		# Force chunk_id to an impossible value so _update_entity_chunk_internal
+		# always re-inserts into the correct chunk.
+		tf.chunk_id = Vector2i(999999, 999999)
+		_update_entity_chunk_internal(entity, tf)
+
+func get_entities_in_chunk(chunk_id: Vector2i) -> Array[StringName]:
+	if _chunks.has(chunk_id):
+		return _chunks[chunk_id] as Array[StringName]
+	return [] as Array[StringName]
+
+# ==========================================
+# UESS: Streaming Groups (Phase 6)
+# ==========================================
+func assign_entity_to_group(entity_id: StringName, group_id: StringName) -> void:
+	remove_entity_from_group(entity_id)
+	
+	if not _streaming_groups.has(group_id):
+		_streaming_groups[group_id] = [] as Array[StringName]
+	_streaming_groups[group_id].append(entity_id)
+	_entity_to_group[entity_id] = group_id
+
+func remove_entity_from_group(entity_id: StringName) -> void:
+	if _entity_to_group.has(entity_id):
+		var group_id: StringName = _entity_to_group[entity_id]
+		if _streaming_groups.has(group_id):
+			_streaming_groups[group_id].erase(entity_id)
+			if _streaming_groups[group_id].is_empty():
+				_streaming_groups.erase(group_id)
+		_entity_to_group.erase(entity_id)
+
+func get_entity_group(entity_id: StringName) -> StringName:
+	return _entity_to_group.get(entity_id, &"")
+
+func get_group_members(group_id: StringName) -> Array[StringName]:
+	if _streaming_groups.has(group_id):
+		return _streaming_groups[group_id]
+	return [] as Array[StringName]

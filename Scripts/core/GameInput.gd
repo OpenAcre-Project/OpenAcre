@@ -16,6 +16,11 @@ const ACTION_VEHICLE_STEER_LEFT := "vehicle_steer_left"
 const ACTION_VEHICLE_STEER_RIGHT := "vehicle_steer_right"
 const ACTION_VEHICLE_BRAKE := "vehicle_brake"
 
+const ACTION_ATTACH_IMPLEMENT := "vehicle_attach_implement"
+const ACTION_TOGGLE_IMPLEMENT := "vehicle_toggle_implement"
+const ACTION_LOWER_IMPLEMENT := "vehicle_lower_implement"
+const ACTION_CYCLE_IMPLEMENT := "vehicle_cycle_implement"
+
 static func ensure_default_bindings() -> void:
 	_ensure_action_with_defaults(ACTION_INTERACT, [_key_event(KEY_F)])
 	_ensure_action_with_defaults(ACTION_TOGGLE_HELP, [_key_event(KEY_F1)])
@@ -31,15 +36,17 @@ static func ensure_default_bindings() -> void:
 	_ensure_action_with_defaults(ACTION_VEHICLE_STEER_LEFT, [_key_event(KEY_A), _key_event(KEY_LEFT)])
 	_ensure_action_with_defaults(ACTION_VEHICLE_STEER_RIGHT, [_key_event(KEY_D), _key_event(KEY_RIGHT)])
 	_ensure_action_with_defaults(ACTION_VEHICLE_BRAKE, [_key_event(KEY_SPACE)])
+	_ensure_action_with_defaults(ACTION_ATTACH_IMPLEMENT, [_key_event(KEY_Z), _key_event(KEY_Q)])
+	_ensure_action_with_defaults(ACTION_LOWER_IMPLEMENT, [_key_event(KEY_X), _key_event(KEY_V)])
+	_ensure_action_with_defaults(ACTION_TOGGLE_IMPLEMENT, [_key_event(KEY_C), _key_event(KEY_B)])
+	_ensure_action_with_defaults(ACTION_CYCLE_IMPLEMENT, [_key_event(KEY_G)])
 
 static func _ensure_action_with_defaults(action_name: StringName, default_events: Array[InputEvent]) -> void:
 	if not InputMap.has_action(action_name):
 		InputMap.add_action(action_name)
-
 	if InputMap.action_get_events(action_name).is_empty():
 		for input_event: InputEvent in default_events:
 			InputMap.action_add_event(action_name, input_event)
-
 static func _key_event(keycode: Key) -> InputEventKey:
 	var event := InputEventKey.new()
 	event.keycode = keycode

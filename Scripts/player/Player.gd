@@ -146,55 +146,38 @@ func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_G and event.pressed and not event.is_echo():
 		drop_item(0) # Drops first item in pockets for testing
 
+## UESS Drop: removes entity from inventory, clears parent, sets position.
+## StreamSpooler automatically detects the entity in the spatial chunk and spawns its 3D view.
 func drop_item(index: int) -> void:
-	if _player_data == null or _player_data.pockets.items.size() <= index:
+	if _player_data == null or _player_data.pockets.entity_ids.size() <= index:
 		return
-		
-	var item: ItemInstance = _player_data.pockets.remove_item(index)
-	if item == null:
+	
+	var entity_id: StringName = _player_data.pockets.remove_at(index)
+	if entity_id == &"":
 		return
-		
-	var def: ItemDefinition = item.get_definition()
-	if def == null or def.world_scene == null:
-		GameLog.warn("Cannot drop item %s: No world scene defined." % item.definition_id)
+	
+	if not GameManager.session or not GameManager.session.entities:
 		return
-		
-	var dropped_node: Node = def.world_scene.instantiate()
-	if not dropped_node is RigidBody3D:
-		GameLog.error("Dropped scene for %s must be a RigidBody3D" % item.definition_id)
-		dropped_node.queue_free()
+	var em := GameManager.session.entities as EntityManager
+	
+	var entity := em.get_entity(entity_id)
+	if entity == null:
+		GameLog.warn("Cannot drop item: EntityData not found for %s" % entity_id)
 		return
-		
+	
+	# Calculate drop position: 1.5m in front of player, 1m above ground
 	var spawn_pos: Vector3 = global_position + (-global_transform.basis.z * 1.5) + Vector3.UP * 1.0
 	
-	var interactable_node: InteractableItem3D = dropped_node if dropped_node is InteractableItem3D else null
-	if not interactable_node:
-		# Search children just in case
-		for child in dropped_node.get_children():
-			if child is InteractableItem3D:
-				interactable_node = child
-				break
-				
-	if interactable_node:
-		interactable_node.item_data = item
-	else:
-		GameLog.warn("Dropped scene lacks an InteractableItem3D script!")
+	# Clear the parent and set position — EntityManager re-inserts into spatial chunks.
+	# StreamSpooler will automatically see it and spawn the 3D view on the next spool cycle.
+	em.clear_entity_parent(entity_id, spawn_pos, rotation.y)
 	
-	# Spawn into the same world as the player (crucial for World3D rendering)
-	var spawn_parent: Node = get_parent()
-	if spawn_parent:
-		spawn_parent.add_child(dropped_node)
-	else:
-		get_tree().root.add_child(dropped_node)
-		
-	dropped_node.global_position = spawn_pos
+	var stack_count: int = 1
+	var stack_comp := entity.get_component(&"stackable") as StackableComponent
+	if stack_comp:
+		stack_count = stack_comp.count
 	
-	# Impulse
-	var force: Vector3 = -global_transform.basis.z * 2.0 + Vector3.UP * 1.0
-	if dropped_node is RigidBody3D:
-		dropped_node.apply_central_impulse(force)
-	
-	GameLog.info("Dropped %s x%d" % [item.definition_id, item.stack])
+	GameLog.info("Dropped %s x%d" % [entity.definition_id, stack_count])
 
 func toggle_godmode() -> bool:
 	is_godmode = not is_godmode

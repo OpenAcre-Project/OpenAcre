@@ -1,71 +1,84 @@
-# :terminal: Developer Console | [Home](../index.md)
+# Developer Console | [Home](../index.md)
 
-The developer console is the primary runtime debugging surface for simulation state, chunk behavior, and UESS entity spawning.
+The developer console is the in-game runtime tool for inspecting simulation state,
+spawning entities, and validating save/load behavior.
 
 ---
 
 ## Access
 
-Toggle key: backtick (`).
-
-The console stays active even when gameplay input is blocked, and it streams messages emitted through `EventBus.log_message`.
+- Toggle key: backtick key.
+- Close console with `Esc` while console is focused.
+- Console runs with `PROCESS_MODE_ALWAYS` so it remains responsive when the tree is paused.
 
 ---
 
-## Command Model
+## Command Reference
 
-Commands are registered in `Scripts/debug/DeveloperConsole.gd` and dispatched through aliases.
-
-Notable commands:
+Commands are implemented in `Scripts/debug/DeveloperConsole.gd`.
 
 | Command | Purpose |
 | --- | --- |
-| `help` | Show all registered commands and usage. |
+| `help` | Print command list and usage hints. |
+| `clear` | Clear current console output. |
+| `copy` | Copy console text to clipboard. |
 | `time now` / `time set <day> <hour> <minute>` | Inspect or set simulation time. |
 | `ff <value>[m|h|d]` | Fast-forward simulation time. |
 | `spawn list` | List scene aliases and loaded entity definitions. |
-| `spawn <alias_or_def> [count]` | Spawn UESS entities via `EntityRegistry` + `EntityManager`. |
-| `spawn_scene <res://...tscn> [count]` | Spawn raw scene instances directly (non-UESS path). |
-| `chunks info` | Print visual/simulation chunk counts and stream center. |
-| `godmode` | Toggle player noclip mode. |
-| `inv` | Show player pocket inventory. |
+| `spawn <alias_or_def> [count]` | Spawn UESS entities (`EntityRegistry` + `EntityManager`). |
+| `spawn_scene <res://...tscn> [count]` | Spawn raw scene instances (non-UESS). |
+| `st [vehicle_def] [implement_def]` | Quick tractor + implement test rig spawn. |
+| `sim catchup <seconds>` | Apply farm simulation catch-up for testing. |
+| `chunks` / `chunks info` | Toggle chunk overlay or print chunk metrics. |
+| `farmable` | Toggle farmable overlay. |
+| `godmode` | Toggle player noclip/free-fly mode. |
+| `inv` | Print player pocket inventory contents. |
+| `keybinds` | Print current effective keybindings. |
+| `save [slot]` | Save to slot (default 1). |
+| `load [slot]` | Load from slot (default 1). |
+| `saves [max_slots]` | List slot metadata summaries. |
+
+---
+
+## Save/Load QA Commands
+
+Recommended loop while developing persistence:
+
+1. `save 1`
+2. mutate world state (move player, time jump, spawn/despawn)
+3. `load 1`
+4. `saves 8` to verify slot metadata remains sane
+
+For full validation matrix, see [Save/Load QA Protocol](save_load_qa.md).
 
 ---
 
 ## UESS Spawn Rule
 
-For gameplay-valid vehicle tests, use UESS entity IDs (or aliases that resolve to them), for example:
+Use `spawn` for gameplay-valid persistence/streaming tests:
 
 - `spawn vehicle.truck`
 - `spawn truck`
 - `spawn vehicle.plow`
 
-Alias resolution is definition-first:
+Alias resolution tries:
 
 1. `<alias>`
 2. `vehicle.<alias>`
 3. `item.<alias>`
 
-So `spawn truck` resolves to `vehicle.truck` when that definition exists.
+---
+
+## `spawn` vs `spawn_scene`
+
+- `spawn ...` creates UESS-owned entities and participates in streaming/despawn/save.
+- `spawn_scene ...` instantiates a scene directly and bypasses UESS lifecycle.
+
+Use `spawn_scene` only for isolated visual checks.
 
 ---
 
-## Important Distinction
+## Logging
 
-`spawn` and `spawn_scene` are intentionally different:
-
-- `spawn ...` -> UESS-owned entities (eligible for StreamSpooler load/unload/despawn).
-- `spawn_scene ...` -> direct scene instances (not tracked by UESS entity data lifecycle).
-
-Use `spawn_scene` only for isolated visual/debug checks. For streaming/despawn validation, always use `spawn`.
-
----
-
-## Debug Workflow Example
-
-1. `spawn vehicle.truck`
-2. `chunks info`
-3. Drive across chunk boundaries.
-4. Verify unload/reload behavior without losing authoritative state.
-
-For chunk/collision tuning details, see [Chunk & Catch-Up System](../rendering/chunk_system.md).
+Console output mirrors `EventBus.log_message`, including warn/error coloring.
+This makes it the fastest way to observe persistence and streaming diagnostics in runtime.

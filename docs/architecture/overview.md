@@ -1,4 +1,4 @@
-# :map: Architecture Overview | [Home](../index.md)
+# 🗺️ Architecture Overview | [Home](../index.md)
 
 This project follows a strict **Logic-Visual Separation** (also known as Data-View Separation) powered by the **Universal Entity Streaming System (UESS)**.
 
@@ -57,7 +57,7 @@ graph TD
 
 ---
 
-## :tractor: Vehicle Architecture
+## 🚜 Vehicle Architecture
 
 Vehicles are the most complex entities. Their lifecycle is fully managed by the UESS:
 - **Data-Driven Definitions:** Vehicles are defined in JSON files (`Data/Entities/truck.json`) mapping to Components and a `view_scene`.
@@ -71,7 +71,7 @@ Vehicles are the most complex entities. Their lifecycle is fully managed by the 
 
 ---
 
-## :video_camera: Camera Architecture
+## 🎥 Camera Architecture
 
 The camera system is centralized through **OrbitCameraController.gd** to ensure DRY code.
 
@@ -83,10 +83,12 @@ The camera system is centralized through **OrbitCameraController.gd** to ensure 
 
 ---
 
-## :gear: Data Pipeline
+## ⚙️ Data Pipeline
 
 1. **Spawn:** `EntityRegistry` creates an `EntityData` from a JSON definition. `EntityManager` registers it and assigns a chunk.
 2. **Stream:** `StreamSpooler` detects the entity in an active chunk, runs `CatchUpEngine`, instantiates the `view_scene`.
 3. **Sync:** `EntityView3D.apply_data()` sets initial position/state. `_physics_process` continuously syncs transforms back.
 4. **Despool:** When the chunk deactivates, `extract_data()` saves the final state, the 3D Node is destroyed.
-5. **Persist:** `EntityData` components can be serialized to JSON for save/load (Phase 7).
+5. **Persist:** `SaveManager` serializes session metadata, entities/components, and farm heatmap layers using atomic slot promotion.
+
+For the complete persistence contract, see [Save/Load Runtime](save_load_runtime.md).

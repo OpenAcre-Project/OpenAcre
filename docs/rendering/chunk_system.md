@@ -1,4 +1,4 @@
-# :grid: Chunk & Catch-Up System | [Home](../index.md)
+# :triangular_ruler: Chunk & Catch-Up System | [Home](../index.md)
 
 The project uses separate systems for simulation chunks, visual streaming, and Terrain3D collision. Fall-through prevention depends on all three being aligned.
 
@@ -31,7 +31,7 @@ Three bounds matter:
 
 When `auto_configure_radii_from_chunks = true`:
 
-```text
+```gdscript
 chunk_radius = GridManager(stream target).get_stream_radius()
 chunk_size_meters = GameManager.session.farm.simulation_chunk_size_tiles
 chunk_collision_edge = (chunk_radius + 0.5) * chunk_size_meters
@@ -164,3 +164,18 @@ Check:
 ## Catch-Up Reminder
 
 Unloaded entities remain in data and continue logically via catch-up processing when they return to active visual range.
+
+---
+
+## Save/Load Coupling
+
+Streaming and persistence are explicitly coupled through `EventBus` + `SaveManager`:
+
+1. `SaveManager.save_slot()` emits `pre_save_flush`.
+2. `StreamSpooler._on_pre_save_flush()` runs `flush_active_views_to_data()` so serialized components include latest runtime transforms/state.
+3. During load, `SaveManager` temporarily disables streaming, clears runtime views, and starts a blackout window.
+4. After data hydration and chunk refresh, blackout is released after settle frames.
+
+This coupling is required to avoid stale pre-save transforms and to prevent load-frame physics instability.
+
+For full load contract details, see [Save/Load Runtime](../architecture/save_load_runtime.md).

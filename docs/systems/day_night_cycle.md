@@ -1,10 +1,10 @@
-# :clock1: Day/Night Cycle | [Home](../index.md)
+# 🕐 Day/Night Cycle | [Home](../index.md)
 
 The Day/Night cycle in OpenAcre is split into a logical simulation (tracking time) and a visual controller (animating light and environment).
 
 ---
 
-## :timer_clock: Logical Simulation
+## ⏲️ Logical Simulation
 
 !!! abstract "TimeManager.gd"
     A headless Autoload that manages the passage of time. It is the authoritative source for the current game hour and minute.
@@ -14,7 +14,7 @@ The Day/Night cycle in OpenAcre is split into a logical simulation (tracking tim
 
 ---
 
-## :sunny: Visual Controller
+## ☀️ Visual Controller
 
 !!! success "DayNightController.gd"
     A world-space actor that listens to the `TimeManager` and rotates the `DirectionalLight3D` (Sun) and updates the `WorldEnvironment`.

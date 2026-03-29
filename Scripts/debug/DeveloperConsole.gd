@@ -77,6 +77,9 @@ func _register_all_commands() -> void:
 	_register_command("godmode", "Toggle player noclip free-fly mode", "godmode", "_cmd_godmode", ["fly"])
 	_register_command("inventory", "List all items currently in player pockets", "inv", "_cmd_inventory", ["inv"])
 	_register_command("keybinds", "List all game keybinds", "keybinds", "_cmd_keybinds")
+	_register_command("save", "Save to slot", "save [slot]", "_cmd_save")
+	_register_command("load", "Load from slot", "load [slot]", "_cmd_load")
+	_register_command("saves", "List save slot metadata", "saves [max_slots]", "_cmd_saves")
 	_register_command("st", "Spawn tractor and plow in position", "spawntest [vehicle_spec] [plow_alias]", "_cmd_spawn_test")
 
 func _register_command(cmd_name: String, desc: String, usage: String, method: String, aliases: Array[String] = []) -> void:
@@ -447,6 +450,65 @@ func _cmd_keybinds(_parts: Array[String] = []) -> void:
 	_print_line("Vehicle Steer Left: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_STEER_LEFT))
 	_print_line("Vehicle Steer Right: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_STEER_RIGHT))
 	_print_line("Vehicle Brake: " + GameInput.get_action_binding_text(GameInput.ACTION_VEHICLE_BRAKE))
+	_print_line("Pause Menu: " + GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_PAUSE_MENU))
+
+func _cmd_save(parts: Array[String]) -> void:
+	var slot := 1
+	if parts.size() >= 2:
+		slot = maxi(1, int(parts[1]))
+
+	var ok := SaveManager.save_slot(slot)
+	if ok:
+		_print_line("Saved slot %02d" % slot)
+	else:
+		_print_line("Save failed for slot %02d" % slot)
+
+func _cmd_load(parts: Array[String]) -> void:
+	var slot := 1
+	if parts.size() >= 2:
+		slot = maxi(1, int(parts[1]))
+
+	_print_line("Loading slot %02d..." % slot)
+	var ok := await SaveManager.load_slot(slot)
+	if ok:
+		_print_line("Loaded slot %02d" % slot)
+	else:
+		_print_line("Load failed for slot %02d" % slot)
+
+func _cmd_saves(parts: Array[String]) -> void:
+	var max_slots := 8
+	if parts.size() >= 2:
+		max_slots = maxi(1, int(parts[1]))
+
+	var slots: Dictionary = SaveManager.list_slot_metadata(max_slots)
+	if slots.is_empty():
+		_print_line("No save metadata found in first %d slots." % max_slots)
+		return
+
+	_print_line("--- Save Slots ---")
+	var keys: Array = slots.keys()
+	keys.sort()
+	for key_any: Variant in keys:
+		var key: String = str(key_any)
+		var metadata: Dictionary = slots[key]
+		var unix_ts: int = int(metadata.get("saved_unix", 0))
+		var dt := Time.get_datetime_dict_from_unix_time(unix_ts)
+		var map_name := str(metadata.get("map", "unknown"))
+		var time_data: Dictionary = metadata.get("time", {})
+		_print_line(
+			"Slot %02d -> %04d-%02d-%02d %02d:%02d | map=%s | Day %d %02d:%02d" % [
+				int(key),
+				int(dt.get("year", 0)),
+				int(dt.get("month", 0)),
+				int(dt.get("day", 0)),
+				int(dt.get("hour", 0)),
+				int(dt.get("minute", 0)),
+				map_name,
+				int(time_data.get("day", 1)),
+				int(time_data.get("hour", 0)),
+				int(time_data.get("minute", 0))
+			]
+		)
 
 func _print_chunks_info() -> void:
 	var grid_mgr := _get_grid_manager()

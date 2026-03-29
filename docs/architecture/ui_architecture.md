@@ -1,43 +1,78 @@
-# :window: UI Architecture | [Home](../index.md)
+# UI Architecture | [Home](../index.md)
 
-To maintain a clean separation between the 3D world and the user interface, the project strictly enforces an event-driven UI pipeline: **Headless Data -> Signal Bus -> UI/Visuals**.
-
----
-
-## :broadcast: The EventBus Singleton
-
-!!! gear "Central Nervous System"
-    An Autoload `EventBus.gd` serves as the central bridge between logic and visuals.
-
-- **Data/Logic Nodes**: (like `SimulationCore`, `PlayerInteractionController`) *emit* signals. They never reference the UI directly.
-- **Visual Nodes**: (like `ToolUI`, `MasterUI`) *listen* to this bus and react.
+OpenAcre UI uses a scene-level `MasterUI` plus event-driven data hooks.
+Gameplay logic stays authoritative in data systems, while UI reflects current state.
 
 ---
 
-## :desktop: MasterUI
-`MasterUI` is a global Autoload (`CanvasLayer`) that completely decouples the interface from the local Player node.
+## EventBus Contract
 
-!!! info "Responsive Zoning"
-    It uses Godot's `MarginContainer` and `VBoxContainer` elements to create strict layout zones (Top-Left, Bottom-Right, etc.), preventing text overlap and ensuring responsive anchoring.
+`EventBus.gd` exposes cross-layer signals for UI, logs, and save/load flow.
 
-### Components
-UI elements are broken down into isolated components instantiated into the `MasterUI` zones:
-- `TimeUI`: Listens to **[TimeManager](../systems/day_night_cycle.md)**.minute_passed and updates the time display independently.
-- `ToolUI`: Listens to `EventBus.player_tool_equipped`.
-- `HelpUI`: Contextual control lists bound to the UI toggle keys (Default: F1).
+Relevant UI/persistence signals:
 
----
-
-## :eye: Contextual Interaction (Hover)
-
-Instead of casting a ray exclusively on click, the `PlayerInteractionController` continuously casts a hover physics-raycast periodically. When it hits a valid object, it emits `EventBus.update_crosshair_prompt("Interact [E]")`. The UI center container passively displays this.
+- `log_message`
+- `update_crosshair_prompt`
+- `save_game_requested`
+- `pre_save_flush`
+- `load_game_requested`
+- `game_loaded_successfully`
 
 ---
 
-## :bug: Debugging Ecosystem
+## MasterUI Runtime Role
 
-!!! success "Plug-and-Play Debugging"
-    The system supports a fully dynamic debug overlay that can be toggled via project settings or the developer console.
+`Scenes/UI/MasterUI.tscn` + `Scenes/UI/MasterUI.gd` provides:
 
-- **[Developer Console](../dev/developer_console.md)**: Toggled with the backtick (`` ` ``) key.
-- **Simulation Debug Overlay**: A deep simulation observer (chunk grid stats, current physics raycast targets, etc.). It is dynamically injected into the `MasterUI` and can be completely excluded in production builds.
+- main HUD zones (top-left, top-right, bottom-left, bottom-right)
+- contextual prompt surfaces
+- pause overlay with save/load controls
+
+`MasterUI` runs with `PROCESS_MODE_ALWAYS` so pause/menu key handling remains alive while the tree is paused.
+
+---
+
+## Pause Menu And Persistence UX
+
+Pause menu is toggled through `GameInput.ACTION_TOGGLE_PAUSE_MENU` (default `Esc`).
+
+Pause overlay includes:
+
+- slot picker (`SlotSpinBox`)
+- slot metadata preview (`SlotMetaLabel`)
+- `Save Game` button
+- `Load Game` button
+- `Resume` button
+- status/error text (`PauseStatusLabel`)
+
+Behavior:
+
+- opening menu pauses scene tree and releases mouse capture
+- save calls `SaveManager.save_slot(slot)`
+- load awaits `SaveManager.load_slot(slot)`
+- closing menu restores gameplay pause/mouse state
+
+---
+
+## Input Routing Rules
+
+Input actions are centralized in `Scripts/core/GameInput.gd`.
+
+Key defaults:
+
+- `F1` help toggle
+- `F2` UI visibility toggle
+- `F3` debug overlay toggle
+- backtick console toggle
+- `Esc` pause menu toggle
+
+Gameplay consumers (player controllers) respect `GameInput.is_gameplay_input_blocked(...)` so open UI/console states block gameplay-only controls.
+
+---
+
+## Debug Surfaces
+
+- [Developer Console](../dev/developer_console.md) for runtime commands and logs
+- `SimulationDebugOverlay` (project-setting gated)
+
+Both are designed to remain interactive during pause or non-gameplay states.

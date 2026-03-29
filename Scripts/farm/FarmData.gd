@@ -414,3 +414,159 @@ func generate_initial_plowed_fields() -> void:
 				if Geometry2D.is_point_in_polygon(center_point, field.points):
 					# Intentionally pass false to emit_signal so we batch updates and avoid a signal storm
 					set_tile_state(grid_pos, SoilState.PLOWED, NAN, false)
+
+func clear_runtime_state(keep_region_mask: bool = true) -> void:
+	_grid.clear()
+	_tiles_by_chunk.clear()
+	_seeded_tiles_by_chunk.clear()
+	_chunk_unloaded_at_minute.clear()
+	_loaded_chunks.clear()
+	_last_processed_minute = -1
+	if not keep_region_mask:
+		active_region_mask = null
+
+func rebuild_active_growth_chunk_index() -> void:
+	_tiles_by_chunk.clear()
+	_seeded_tiles_by_chunk.clear()
+
+	for grid_pos_any: Variant in _grid.keys():
+		if grid_pos_any is not Vector2i:
+			continue
+		var grid_pos: Vector2i = grid_pos_any
+		var tile_data: FarmTileData = _grid[grid_pos]
+		_register_tile_in_indices(grid_pos, tile_data)
+
+func get_heatmap_resolution() -> Vector2i:
+	if active_region_mask != null and active_region_mask.mask_texture != null:
+		var width := maxi(1, active_region_mask.mask_texture.get_width())
+		var height := maxi(1, active_region_mask.mask_texture.get_height())
+		return Vector2i(width, height)
+	return Vector2i(1024, 1024)
+
+func _grid_to_heatmap_pixel(grid_pos: Vector2i, width: int, height: int) -> Vector2i:
+	var safe_width := maxi(width, 1)
+	var safe_height := maxi(height, 1)
+	var world_size := 2048.0
+	var world_center := Vector2.ZERO
+	if active_region_mask != null:
+		world_size = maxf(active_region_mask.world_size_meters, 1.0)
+		world_center = active_region_mask.world_center_position
+
+	var tile_center: Vector2 = grid_to_world_center(grid_pos)
+	var half_size := world_size * 0.5
+	var percent_x: float = (tile_center.x - world_center.x + half_size) / world_size
+	var percent_y: float = (tile_center.y - world_center.y + half_size) / world_size
+
+	var pixel_x: int = int(floor(percent_x * float(safe_width)))
+	var pixel_y: int = int(floor(percent_y * float(safe_height)))
+
+	if pixel_x < 0 or pixel_x >= safe_width or pixel_y < 0 or pixel_y >= safe_height:
+		return Vector2i(-1, -1)
+
+	return Vector2i(pixel_x, pixel_y)
+
+func _heatmap_pixel_to_grid(pixel: Vector2i, width: int, height: int) -> Vector2i:
+	var safe_width := maxi(width, 1)
+	var safe_height := maxi(height, 1)
+	var world_size := 2048.0
+	var world_center := Vector2.ZERO
+	if active_region_mask != null:
+		world_size = maxf(active_region_mask.world_size_meters, 1.0)
+		world_center = active_region_mask.world_center_position
+
+	var half_size := world_size * 0.5
+	var world_x: float = world_center.x - half_size + ((float(pixel.x) + 0.5) / float(safe_width)) * world_size
+	var world_z: float = world_center.y - half_size + ((float(pixel.y) + 0.5) / float(safe_height)) * world_size
+
+	return Vector2i(int(round(world_x - 0.5)), int(round(world_z - 0.5)))
+
+func export_heatmap_layers(crop_to_id: Dictionary) -> Dictionary:
+	var resolution: Vector2i = get_heatmap_resolution()
+	var width := maxi(resolution.x, 1)
+	var height := maxi(resolution.y, 1)
+
+	var soil_image := Image.create(width, height, false, Image.FORMAT_L8)
+	soil_image.fill(Color(0, 0, 0, 1))
+
+	var crop_image := Image.create(width, height, false, Image.FORMAT_L8)
+	crop_image.fill(Color(0, 0, 0, 1))
+
+	var planted_time_image := Image.create(width, height, false, Image.FORMAT_RF)
+	planted_time_image.fill(Color(-1.0, 0, 0, 1))
+
+	for grid_pos_any: Variant in _grid.keys():
+		if grid_pos_any is not Vector2i:
+			continue
+		var grid_pos: Vector2i = grid_pos_any
+		var tile_data: FarmTileData = _grid[grid_pos]
+		var pixel: Vector2i = _grid_to_heatmap_pixel(grid_pos, width, height)
+		if pixel.x < 0 or pixel.y < 0:
+			continue
+
+		soil_image.set_pixelv(pixel, Color(float(tile_data.state) / 255.0, 0, 0, 1))
+
+		if tile_data.crop_type != &"" and crop_to_id.has(tile_data.crop_type):
+			var crop_id: int = int(crop_to_id[tile_data.crop_type])
+			crop_image.set_pixelv(pixel, Color(float(clampi(crop_id, 0, 255)) / 255.0, 0, 0, 1))
+			planted_time_image.set_pixelv(pixel, Color(float(tile_data.planted_at_minute), 0, 0, 1))
+
+	return {
+		"soil_state": soil_image,
+		"crop_type": crop_image,
+		"planted_time": planted_time_image
+	}
+
+func import_heatmap_layers(soil_image: Image, crop_image: Image, planted_time_image: Image, id_to_crop: Dictionary) -> void:
+	if soil_image == null or crop_image == null:
+		return
+
+	clear_runtime_state(true)
+
+	var width := mini(soil_image.get_width(), crop_image.get_width())
+	var height := mini(soil_image.get_height(), crop_image.get_height())
+	if planted_time_image != null:
+		width = mini(width, planted_time_image.get_width())
+		height = mini(height, planted_time_image.get_height())
+
+	if width <= 0 or height <= 0:
+		return
+
+	for y: int in range(height):
+		for x: int in range(width):
+			var soil_value: int = int(round(soil_image.get_pixel(x, y).r * 255.0))
+			var crop_value: int = int(round(crop_image.get_pixel(x, y).r * 255.0))
+			if soil_value == SoilState.GRASS and crop_value == 0:
+				continue
+
+			var grid_pos := _heatmap_pixel_to_grid(Vector2i(x, y), width, height)
+			var tile := FarmTileData.new()
+			tile.state = clampi(soil_value, SoilState.GRASS, SoilState.HARVESTABLE)
+
+			if crop_value > 0 and id_to_crop.has(str(crop_value)):
+				tile.crop_type = StringName(String(id_to_crop[str(crop_value)]))
+				tile.growth_minutes_required = DEFAULT_CROP_GROWTH_MINUTES
+				if planted_time_image != null:
+					tile.planted_at_minute = int(round(planted_time_image.get_pixel(x, y).r))
+				else:
+					tile.planted_at_minute = get_current_total_minutes()
+
+				if tile.planted_at_minute < 0:
+					tile.planted_at_minute = get_current_total_minutes()
+
+				if tile.state == SoilState.GRASS or tile.state == SoilState.PLOWED:
+					tile.state = SoilState.SEEDED
+
+				# Offline catch-up: hydrate to correct growth state immediately on load.
+				var elapsed_minutes := maxi(0, get_current_total_minutes() - tile.planted_at_minute)
+				if elapsed_minutes >= tile.growth_minutes_required:
+					tile.state = SoilState.HARVESTABLE
+				else:
+					tile.state = SoilState.SEEDED
+			else:
+				tile.clear_crop_data()
+				if tile.state == SoilState.SEEDED or tile.state == SoilState.HARVESTABLE:
+					tile.state = SoilState.PLOWED
+
+			_grid[grid_pos] = tile
+
+	rebuild_active_growth_chunk_index()

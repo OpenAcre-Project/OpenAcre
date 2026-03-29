@@ -4,7 +4,7 @@ The **Universal Entity Streaming System (UESS)** enforces a strict separation of
 
 ---
 
-## :building_construction: Architectural Philosophy
+## 🏗️ Architectural Philosophy
 **The Problem:** Traditional OOP design relying on 3D Nodes collapses under the weight of thousands of objects (crops, dropped apples, tractors).
 **The Solution:**
 1. **Mathematical Reality:** Unloaded entities are just dictionaries in memory.
@@ -14,7 +14,7 @@ The **Universal Entity Streaming System (UESS)** enforces a strict separation of
 
 ---
 
-## :open_file_folder: Implementation Structure
+## 📂 Implementation Structure
 
 ### 1. The Core Data Layer (`Scripts/simulation/`)
 Pure data structures representing entity states. Never reference `Node3D` or visual objects here.
@@ -53,24 +53,24 @@ View sync contract:
 
 ---
 
-## :rocket: Implementation Roadmap
+## 🚀 Implementation Roadmap
 
-### :white_check_mark: Phase 1: Component-Based Data Foundation
+### ✅ Phase 1: Component-Based Data Foundation
 - [x] Create pure data Components (Transform, Durability, Container, Vehicle, Seat, Item, Stackable).
 - [x] Create `EntityData` wrapper with parent/child hierarchy.
 - [x] Build `EntityRegistry` factory with JSON parsing.
 
-### :white_check_mark: Phase 2: Spatial Partitioning (The Grid)
+### ✅ Phase 2: Spatial Partitioning (The Grid)
 - [x] Implement $O(1)$ chunk dictionary inside `EntityManager`.
 - [x] Automate chunk transitions when entities move.
 - [x] Implement `GridManager` for calculating render distances and deltas.
 
-### :white_check_mark: Phase 3: The Catch-Up Simulation Engine
+### ✅ Phase 3: The Catch-Up Simulation Engine
 - [x] Add `last_simulated_minute` timestamp tracking across all components.
 - [x] Build `CatchUpEngine` to process elapsed `delta_minutes` when entities wake up.
 - [x] Add state mutation triggers (e.g. decayed Apple swaps definition ID to Rot Pile).
 
-### :white_check_mark: Phase 4: Time-Sliced Streaming
+### ✅ Phase 4: Time-Sliced Streaming
 - [x] Create `StreamSpooler` with Pending Load/Unload queues.
 - [x] Implement microsecond-budgeted instantiations per frame.
 - [x] Establish the freeze/despool handshake (`extract_data()` → `queue_free()`).
@@ -78,7 +78,7 @@ View sync contract:
 - [x] Drive chunk evaluation via `PlayerData` polling (default 0.5s interval, 2-chunk radius).
 - [x] Add startup bootstrap + refresh flow so pre-existing active-chunk entities are queued (`MapManager` -> `StreamSpooler.refresh_from_current_chunks`).
 
-### :white_check_mark: Phase 5: The View Layer & Universal Sync
+### ✅ Phase 5: The View Layer & Universal Sync
 - [x] Create `EntityView3D` base class with `apply_data()` / `extract_data()`.
 - [x] Implement continuous transform sync in `_physics_process` (movement threshold optimization).
 - [x] Wire `Vehicle3D` to read/write `VehicleComponent` data via overrides.
@@ -87,14 +87,14 @@ View sync contract:
 - [x] Enforce manager-authoritative transform persistence (`EntityManager.update_entity_transform`) to keep chunk hashes correct.
 - [x] Add large-delta immediate sync path to prevent stale-chunk teleports.
 
-### :white_check_mark: Phase 6: Complex Linkages (Streaming Groups)
+### ✅ Phase 6: Complex Linkages (Streaming Groups)
 - [x] Implement `StreamingGroup` IDs in `EntityManager` to prevent half-loading attached vehicles.
 - [x] Override chunk logic: if any group member is in an active chunk, the entire group loads.
 - [x] Integrate group dissolution upon physical detachment (`HitchSocket3D`).
 - [x] Add active-player convoy immunity: unload queue skips entities sharing the active vehicle's `StreamingGroup`.
 - [x] Add driven-vehicle unload guard: force eject synchronously before queue-free to preserve camera/control continuity.
 
-### :hourglass_flowing_sand: Phase 7: Save/Load Serialization (Planned)
+### ⏳ Phase 7: Save/Load Serialization (Planned)
 - [ ] Serialize `EntityManager._entities` via `save_to_dict()` on every component.
 - [ ] Write JSON to `user://savegame.json` including global time.
 - [ ] Reconstruct `EntityData` objects on load, preserving `runtime_id`.

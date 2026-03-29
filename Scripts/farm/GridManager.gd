@@ -2,6 +2,7 @@ extends Node3D
 
 const ChunkGridOverlayRef = preload("res://Scripts/debug/ChunkGridOverlay.gd")
 const FarmableGridOverlayRef = preload("res://Scripts/debug/FarmableGridOverlay.gd")
+const CropNodeSceneRef = preload("res://Scenes/Interactables/CropNode.tscn")
 
 @export var enable_chunk_streaming := true
 @export var streamed_chunk_radius := 2  # change this to change spawing radiu
@@ -12,11 +13,16 @@ var _stream_update_timer := 0.0
 var _currently_loaded_chunks: Dictionary = {}
 var _chunk_grid_overlay: Node3D = null
 var _farmable_grid_overlay: Node3D = null
+var _crop_nodes_by_grid: Dictionary = {}
+var _crop_nodes_container: Node3D = null
 
 func _ready() -> void:
 	add_to_group("grid_manager")
 	_create_chunk_grid_overlay()
 	_create_farmable_grid_overlay()
+	_create_crop_nodes_container()
+	if not GameManager.session.farm.is_connected("tile_updated", Callable(self, "_on_farm_tile_updated")):
+		GameManager.session.farm.connect("tile_updated", Callable(self, "_on_farm_tile_updated"))
 	if enable_chunk_streaming:
 		_bind_stream_target()
 		_update_streamed_chunks(true)
@@ -27,6 +33,10 @@ func _exit_tree() -> void:
 			if chunk_pos_any is Vector2i:
 				GameManager.session.farm.mark_chunk_unloaded(chunk_pos_any)
 		_currently_loaded_chunks.clear()
+	_clear_all_crop_nodes()
+	if GameManager.session != null and GameManager.session.farm != null:
+		if GameManager.session.farm.is_connected("tile_updated", Callable(self, "_on_farm_tile_updated")):
+			GameManager.session.farm.disconnect("tile_updated", Callable(self, "_on_farm_tile_updated"))
 
 func _process(delta: float) -> void:
 	if not enable_chunk_streaming:
@@ -62,10 +72,12 @@ func _update_streamed_chunks(force_refresh: bool = false) -> void:
 	for chunk_pos_any: Variant in desired_chunks.keys():
 		if chunk_pos_any is Vector2i and not _currently_loaded_chunks.has(chunk_pos_any):
 			GameManager.session.farm.mark_chunk_loaded(chunk_pos_any, true)
+			_spawn_crop_nodes_for_chunk(chunk_pos_any)
 
 	for chunk_pos_any: Variant in _currently_loaded_chunks.keys():
 		if chunk_pos_any is Vector2i and not desired_chunks.has(chunk_pos_any):
 			GameManager.session.farm.mark_chunk_unloaded(chunk_pos_any)
+			_despawn_crop_nodes_for_chunk(chunk_pos_any)
 
 	var loaded_before := _currently_loaded_chunks.size()
 	_currently_loaded_chunks = desired_chunks
@@ -83,6 +95,9 @@ func _update_streamed_chunks(force_refresh: bool = false) -> void:
 	if _farmable_grid_overlay != null and _farmable_grid_overlay.visible:
 		var ground_y := _stream_target.global_position.y if _stream_target != null else 0.0
 		_farmable_grid_overlay.rebuild(center_chunk, ground_y)
+
+	if force_refresh:
+		_rebuild_crop_nodes_for_loaded_chunks()
 
 func _chunk_sets_equal(left: Dictionary, right: Dictionary) -> bool:
 	if left.size() != right.size():
@@ -159,3 +174,92 @@ func _create_farmable_grid_overlay() -> void:
 	overlay.visible = false
 	add_child(overlay)
 	_farmable_grid_overlay = overlay
+
+func _create_crop_nodes_container() -> void:
+	_crop_nodes_container = Node3D.new()
+	_crop_nodes_container.name = "CropNodes"
+	add_child(_crop_nodes_container)
+
+func rebuild_farm_visuals_after_load() -> void:
+	_update_streamed_chunks(true)
+	_rebuild_crop_nodes_for_loaded_chunks()
+
+func _on_farm_tile_updated(grid_pos: Vector2i, new_state: int) -> void:
+	var chunk_pos := GameManager.session.farm.grid_to_chunk(grid_pos)
+	if not _currently_loaded_chunks.has(chunk_pos):
+		return
+
+	if new_state == FarmData.SoilState.SEEDED or new_state == FarmData.SoilState.HARVESTABLE:
+		_ensure_crop_node(grid_pos)
+		return
+
+	_remove_crop_node(grid_pos)
+
+func _spawn_crop_nodes_for_chunk(chunk_pos: Vector2i) -> void:
+	var seeded_tiles: Array[Vector2i] = GameManager.session.farm.get_seeded_chunk_tiles(chunk_pos)
+	for grid_pos: Vector2i in seeded_tiles:
+		_ensure_crop_node(grid_pos)
+
+func _despawn_crop_nodes_for_chunk(chunk_pos: Vector2i) -> void:
+	var to_remove: Array[Vector2i] = []
+	for grid_pos_any: Variant in _crop_nodes_by_grid.keys():
+		if grid_pos_any is not Vector2i:
+			continue
+		var grid_pos: Vector2i = grid_pos_any
+		if GameManager.session.farm.grid_to_chunk(grid_pos) == chunk_pos:
+			to_remove.append(grid_pos)
+
+	for grid_pos: Vector2i in to_remove:
+		_remove_crop_node(grid_pos)
+
+func _rebuild_crop_nodes_for_loaded_chunks() -> void:
+	_clear_all_crop_nodes()
+	for chunk_pos_any: Variant in _currently_loaded_chunks.keys():
+		if chunk_pos_any is Vector2i:
+			_spawn_crop_nodes_for_chunk(chunk_pos_any)
+
+func _clear_all_crop_nodes() -> void:
+	for grid_pos_any: Variant in _crop_nodes_by_grid.keys():
+		if grid_pos_any is Vector2i:
+			_remove_crop_node(grid_pos_any)
+	_crop_nodes_by_grid.clear()
+
+func _ensure_crop_node(grid_pos: Vector2i) -> void:
+	if _crop_nodes_by_grid.has(grid_pos):
+		var existing: Node = _crop_nodes_by_grid[grid_pos]
+		if existing != null and is_instance_valid(existing):
+			if existing.has_method("refresh_from_data"):
+				existing.call("refresh_from_data")
+			return
+		_crop_nodes_by_grid.erase(grid_pos)
+
+	if _crop_nodes_container == null:
+		_create_crop_nodes_container()
+
+	var crop_node_any: Node = CropNodeSceneRef.instantiate()
+	if crop_node_any == null:
+		return
+
+	if crop_node_any.get("grid_position") != null:
+		crop_node_any.set("grid_position", grid_pos)
+
+	_crop_nodes_container.add_child(crop_node_any)
+
+	if crop_node_any is Node3D:
+		var crop_node_3d: Node3D = crop_node_any as Node3D
+		var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
+		var world_center: Vector2 = GameManager.session.farm.grid_to_world_center(grid_pos)
+		crop_node_3d.global_position = Vector3(world_center.x, tile_data.height, world_center.y)
+
+	if crop_node_any.has_method("refresh_from_data"):
+		crop_node_any.call("refresh_from_data")
+
+	_crop_nodes_by_grid[grid_pos] = crop_node_any
+
+func _remove_crop_node(grid_pos: Vector2i) -> void:
+	if not _crop_nodes_by_grid.has(grid_pos):
+		return
+	var node: Node = _crop_nodes_by_grid[grid_pos]
+	_crop_nodes_by_grid.erase(grid_pos)
+	if node != null and is_instance_valid(node):
+		node.queue_free()

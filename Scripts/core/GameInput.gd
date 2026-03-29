@@ -6,6 +6,7 @@ const ACTION_TOGGLE_HELP := "game_toggle_help"
 const ACTION_TOGGLE_DEBUG := "game_toggle_debug"
 const ACTION_TOGGLE_CONSOLE := "game_toggle_console"
 const ACTION_TOGGLE_UI := "game_toggle_ui"
+const ACTION_TOGGLE_PAUSE_MENU := "game_toggle_pause_menu"
 const ACTION_CAMERA_UP := "camera_up"
 const ACTION_CAMERA_DOWN := "camera_down"
 const ACTION_CAMERA_ZOOM_IN := "camera_zoom_in"
@@ -27,6 +28,7 @@ static func ensure_default_bindings() -> void:
 	_ensure_action_with_defaults(ACTION_TOGGLE_UI, [_key_event(KEY_F2)])
 	_ensure_action_with_defaults(ACTION_TOGGLE_DEBUG, [_key_event(KEY_F3)])
 	_ensure_action_with_defaults(ACTION_TOGGLE_CONSOLE, [_key_event(KEY_QUOTELEFT)])
+	_ensure_action_with_defaults(ACTION_TOGGLE_PAUSE_MENU, [_key_event(KEY_ESCAPE)])
 	_ensure_action_with_defaults(ACTION_CAMERA_UP, [_key_event(KEY_Q)])
 	_ensure_action_with_defaults(ACTION_CAMERA_DOWN, [_key_event(KEY_E)])
 	_ensure_action_with_defaults(ACTION_CAMERA_ZOOM_IN, [_mouse_button_event(MOUSE_BUTTON_WHEEL_UP)])
@@ -91,6 +93,13 @@ static func is_ui_toggle_event(event: InputEvent) -> bool:
 
 static func is_console_toggle_event(event: InputEvent) -> bool:
 	if not event.is_action_pressed(ACTION_TOGGLE_CONSOLE):
+		return false
+	if event is InputEventKey and event.is_echo():
+		return false
+	return true
+
+static func is_pause_menu_toggle_event(event: InputEvent) -> bool:
+	if not event.is_action_pressed(ACTION_TOGGLE_PAUSE_MENU):
 		return false
 	if event is InputEventKey and event.is_echo():
 		return false

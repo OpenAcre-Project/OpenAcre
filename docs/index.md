@@ -3,7 +3,7 @@ title: OpenAcre | Hardcore Open-Source Farming & Survival Simulator
 description: The OpenAcre project documentation. A systemic, data-driven farming simulation engine for Godot 4. Realistic agriculture mechanics and survival.
 ---
 
-# :house: OpenAcre Documentation
+# 🏠 OpenAcre Documentation
 
 Welcome to the **OpenAcre** Godot prototype. This project is a data-driven farming simulation engine designed for scalability, persistence, and performance.
 
@@ -12,51 +12,53 @@ Welcome to the **OpenAcre** Godot prototype. This project is a data-driven farmi
 
 ---
 
-## :video_game: Game Systems (User & Modder Guide)
+## 🎮 Game Systems (User & Modder Guide)
 
 If you are looking to understand how the game handles or how to modify existing mechanics, start here: 
 
-- **[:tractor: Vehicle Physics & Implements](systems/vehicles.md)**: Handling, persistence, and component-based attachments (HitchSocket3D / Implement3D).
-- **[:video_camera: Camera System](systems/camera.md)**: Shared OrbitCameraController and GTA-style behaviors.
-- **[:clock1: Time & Day/Night Cycle](systems/day_night_cycle.md)**: Time management and visual world transitions.
-- **[:package: Items & Inventory](systems/items_and_inventory.md)**: Data-driven items, storage, and mass simulation.
+- **[🚜 Vehicle Physics & Implements](systems/vehicles.md)**: Handling, persistence, and component-based attachments (HitchSocket3D / Implement3D).
+- **[🎥 Camera System](systems/camera.md)**: Shared OrbitCameraController and GTA-style behaviors.
+- **[🕐 Time & Day/Night Cycle](systems/day_night_cycle.md)**: Time management and visual world transitions.
+- **[📦 Items & Inventory](systems/items_and_inventory.md)**: Data-driven items, storage, and mass simulation.
 
 ---
 
-## :classical_building: Technical Architecture (Developer Guide)
+## 🏛️ Technical Architecture (Developer Guide)
 
 For developers looking to extend the core engine or understand the data pipeline:
 
-- **[:map: Architecture Overview](architecture/overview.md)**: Our Logic-Visual separation philosophy.
-- **[:factory: Universal Entity Streaming System Blueprint](architecture/uess_architecture.md)**: Data-driven Component/Entity architecture and Spatial Hash chunking planner.
-- **[:book: UESS Technical Reference](architecture/uess_technical_reference.md)**: Architectural decisions and deep-dive logic for the UESS implementation.
-- **[:loop: Core Runtime Flow](architecture/core_runtime.md)**: Simulation sequence and state management.
-- **[:window: UI Architecture](architecture/ui_architecture.md)**: Headless data pipeline and decoupled interfaces.
-- **[:world_map: Map Fields Logic](architecture/map_fields_architecture.md)**: Data-driven fields and batch rendering.
+- **[🗺️ Architecture Overview](architecture/overview.md)**: Our Logic-Visual separation philosophy.
+- **[🏭 Universal Entity Streaming System Blueprint](architecture/uess_architecture.md)**: Data-driven Component/Entity architecture and Spatial Hash chunking planner.
+- **[📖 UESS Technical Reference](architecture/uess_technical_reference.md)**: Architectural decisions and deep-dive logic for the UESS implementation.
+- **[🔁 Core Runtime Flow](architecture/core_runtime.md)**: Simulation sequence and state management.
+- **[💾 Save/Load Runtime](architecture/save_load_runtime.md)**: Atomic slot saves, hydration pipeline, blackout windows, and farm layer persistence.
+- **[🪟 UI Architecture](architecture/ui_architecture.md)**: Headless data pipeline and decoupled interfaces.
+- **[🗺️ Map Fields Logic](architecture/map_fields_architecture.md)**: Data-driven fields and batch rendering.
 
 ---
 
-## :art: Rendering & Performance
+## 🎨 Rendering & Performance
 
 Low-level systems focusing on visual fidelity and world streaming:
 
-- **[:mountain: Terrain3D Rendering](rendering/terrain3d_rendering.md)**: Heightmaps and live texture painting.
-- **[:grid: Chunk & Catch-Up System](rendering/chunk_system.md)**: World-space optimization and logical consistency.
+- **[⛰️ Terrain3D Rendering](rendering/terrain3d_rendering.md)**: Heightmaps and live texture painting.
+- **[📐 Chunk & Catch-Up System](rendering/chunk_system.md)**: World-space optimization and logical consistency.
 
 ---
 
-## :hammer_and_wrench: Development Workspace
+## 🛠️ Development Workspace
 
 Tools and internal documentation for managing the codebase:
 
-- **[:link: Advanced Attachments](dev/advanced_attachments.md)**: High-fidelity hitch models and exact-force joints.
-- **[:memo: Plow Attachment Dev Log](dev_log/plow_attachment.md)**: Implementation history and iterations for towing systems.
-- **[:terminal: Developer Console](dev/developer_console.md)**: Debugging tools and cheat commands.
-- **[:memo: Addon Patch Notes](dev/addon_patches.md)**: Modifications made to third-party plugins.
+- **[🔗 Advanced Attachments](dev/advanced_attachments.md)**: High-fidelity hitch models and exact-force joints.
+- **[📝 Plow Attachment Dev Log](dev_log/plow_attachment.md)**: Implementation history and iterations for towing systems.
+- **[💻 Developer Console](dev/developer_console.md)**: Debugging tools and cheat commands.
+- **[🧪 Save/Load QA Protocol](dev/save_load_qa.md)**: Repeatable verification for atomicity, visual rebuild, blackout safety, and crop catch-up.
+- **[📝 Addon Patch Notes](dev/addon_patches.md)**: Modifications made to third-party plugins.
 
 ---
 
-### :file_folder: Project Structure Breakdown
+### 📁 Project Structure Breakdown
 
 | Path | Purpose |
 | --- | --- |

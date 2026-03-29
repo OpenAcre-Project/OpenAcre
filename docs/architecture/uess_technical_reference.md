@@ -1,6 +1,6 @@
 # UESS Technical Reference
  
-## :gear: Architectural Implementations & Decisions
+## ⚙️ Architectural Implementations & Decisions
 
 This document outlines the concrete architectural decisions made during the rollout of the **Universal Entity Streaming System (UESS)** across its designated blueprint phases.
 

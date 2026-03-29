@@ -1,4 +1,4 @@
-# :video_camera: Camera System | [Home](../index.md)
+# 🎥 Camera System | [Home](../index.md)
 
 The project uses a unified, shared camera system to ensure a consistent feel across all third-person entities (Players and Vehicles).
 
@@ -13,7 +13,7 @@ All third-person cameras are powered by the **`OrbitCameraController`** componen
 
 ---
 
-## :tractor: Vehicle Camera (GTA-Style)
+## 🚜 Vehicle Camera (GTA-Style)
 
 The vehicle camera is configured to prioritize **Visibility and Ease of Driving**.
 
@@ -26,7 +26,7 @@ The vehicle camera is configured to prioritize **Visibility and Ease of Driving*
 
 ---
 
-## :walking: Player Camera (Action-Style)
+## 🚶 Player Camera (Action-Style)
 
 The player camera is configured to prioritize **User Direction**.
 

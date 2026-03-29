@@ -1,6 +1,7 @@
 # Godot 4+ specific ignores
 .godot/
 /android/
+**/*.lnk
 
 # Addons policy:
 # - Track source/config/resources for reproducibility

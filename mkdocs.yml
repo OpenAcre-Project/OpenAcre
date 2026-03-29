@@ -8,6 +8,7 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - Core Runtime: architecture/core_runtime.md
+      - Save/Load Runtime: architecture/save_load_runtime.md
       - UI Architecture: architecture/ui_architecture.md
       - Map Fields: architecture/map_fields_architecture.md
   - Systems:
@@ -20,6 +21,7 @@ nav:
       - Chunk System: rendering/chunk_system.md
   - Developer:
       - Console: dev/developer_console.md
+      - Save/Load QA: dev/save_load_qa.md
       - Vehicle Attachments: dev/advanced_attachments.md
       - Addon Patches: dev/addon_patches.md
   - Dev Log:

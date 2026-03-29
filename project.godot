@@ -22,6 +22,7 @@ GameManager="*res://Singletons/GameManager.gd"
 EventBus="*res://Singletons/EventBus.gd"
 ItemRegistry="*res://Scripts/simulation/ItemRegistry.gd"
 EntityRegistry="*res://Scripts/core/EntityRegistry.gd"
+SaveManager="*res://Singletons/SaveManager.gd"
 
 [debug]
 
@@ -84,3 +85,4 @@ common/physics_interpolation=true
 [rendering]
 
 rendering_device/driver.windows="d3d12"
+textures/vram_compression/import_etc2_astc=true

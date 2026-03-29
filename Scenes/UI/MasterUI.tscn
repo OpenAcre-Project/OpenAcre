@@ -68,3 +68,101 @@ custom_minimum_size = Vector2(4, 4)
 layout_mode = 2
 mouse_filter = 2
 color = Color(1, 1, 1, 0.75)
+
+[node name="PauseOverlay" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+
+[node name="Backdrop" type="ColorRect" parent="PauseOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.55)
+
+[node name="CenterContainer" type="CenterContainer" parent="PauseOverlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="PausePanel" type="PanelContainer" parent="PauseOverlay/CenterContainer"]
+custom_minimum_size = Vector2(560, 360)
+layout_mode = 2
+
+[node name="Margin" type="MarginContainer" parent="PauseOverlay/CenterContainer/PausePanel"]
+layout_mode = 2
+theme_override_constants/margin_left = 22
+theme_override_constants/margin_top = 18
+theme_override_constants/margin_right = 22
+theme_override_constants/margin_bottom = 18
+
+[node name="VBox" type="VBoxContainer" parent="PauseOverlay/CenterContainer/PausePanel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "Paused"
+horizontal_alignment = 1
+
+[node name="SlotRow" type="HBoxContainer" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox/SlotRow"]
+layout_mode = 2
+text = "Save Slot"
+
+[node name="SlotSpinBox" type="SpinBox" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox/SlotRow"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+min_value = 1.0
+max_value = 99.0
+step = 1.0
+value = 1.0
+rounded = true
+
+[node name="SlotMetaLabel" type="Label" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = "Slot 01: Empty"
+
+[node name="Separator" type="HSeparator" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+layout_mode = 2
+
+[node name="SaveButton" type="Button" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Save Game"
+
+[node name="LoadButton" type="Button" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Load Game"
+
+[node name="ResumeButton" type="Button" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Resume"
+
+[node name="PauseStatusLabel" type="Label" parent="PauseOverlay/CenterContainer/PausePanel/Margin/VBox"]
+unique_name_in_owner = true
+layout_mode = 2
+autowrap_mode = 3
+text = ""

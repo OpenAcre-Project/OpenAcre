@@ -8,8 +8,19 @@ const FULL_SCALE := Vector3(1.0, 1.0, 1.0)
 var _harvest_material: StandardMaterial3D
 
 func _ready() -> void:
+	add_to_group("crop_node")
+	if GameManager.session != null and GameManager.session.farm != null:
+		var farm := GameManager.session.farm
+		if not farm.is_connected("tile_updated", Callable(self, "_on_farm_tile_updated")):
+			farm.connect("tile_updated", Callable(self, "_on_farm_tile_updated"))
 	scale = START_SCALE
 	refresh_from_data()
+
+func _exit_tree() -> void:
+	if GameManager.session != null and GameManager.session.farm != null:
+		var farm := GameManager.session.farm
+		if farm.is_connected("tile_updated", Callable(self, "_on_farm_tile_updated")):
+			farm.disconnect("tile_updated", Callable(self, "_on_farm_tile_updated"))
 
 func refresh_from_data() -> void:
 	var tile_data := GameManager.session.farm.get_tile_data(grid_position)
@@ -30,3 +41,13 @@ func set_harvestable_visual(is_harvestable: bool) -> void:
 		_harvest_material.albedo_color = Color(0.8, 0.8, 0.1)
 
 	mesh_instance.set_surface_override_material(0, _harvest_material)
+
+func _on_farm_tile_updated(updated_grid_pos: Vector2i, new_state: int) -> void:
+	if updated_grid_pos != grid_position:
+		return
+
+	if new_state == FarmData.SoilState.SEEDED or new_state == FarmData.SoilState.HARVESTABLE:
+		refresh_from_data()
+		return
+
+	queue_free()

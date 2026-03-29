@@ -1,54 +1,69 @@
-# :loop: Core Runtime Flow | [Home](../index.md)
+# Core Runtime Flow | [Home](../index.md)
 
-The application boots from `Scenes/Main.tscn`, which immediately establishes the split between logic and **[visual rendering](../rendering/terrain3d_rendering.md)**.
-
----
-
-## 🏗️ Simulation Sequence
-
-!!! abstract "Boot Sequence"
-    OpenAcre initializes logic before visuals to ensure the world state is ready before the first frame is rendered.
-
-1. **`GameManager` Load**: Reads the local configuration or save file.
-2. **`SimulationCore` Start**: Boots the `EntityManager` and `TimeManager`.
-3. **World Stream**: The `MapManager` scans for nearby vehicles and creates 3D nodes incrementally.
+OpenAcre runtime is split into authoritative data state and streamed visual state.
+The logic side remains valid even when view nodes are unloaded.
 
 ---
 
-## :gear: Headless Logic Layer
+## Runtime Entry Points
 
-The logic layer exists primarily in **`SimulationCore.gd`** and its associated Autoloads.
+Main boot starts from `Scenes/Main.tscn` with these persistent autoloads:
 
-!!! gear "Authoritative Signal Bus"
-    All logical state changes (time passing, fuel consumption, item picking) occur here first. Only after the logic confirms the change is a signal emitted to the View layer.
+- `GameManager`
+- `EventBus`
+- `SaveManager`
+- `ItemRegistry`
+- `EntityRegistry`
 
-- **`TimeManager`**: Tracks seconds, minutes, and days. Emits `minute_passed` for consumers like `DayNightController`.
-- **`EntityManager`**: The registry for every vehicle and player. It stores the `VehicleData` resources that survive even if the 3D vehicle is deleted to save memory.
-
----
-
-## :eye: Visual Representation Layer
-
-The visual layer is the "dumb" presentation of the simulation.
-
-!!! success "View Layer decoupling"
-    View scripts (like `Vehicle3D` or `Player`) should ideally never hold authoritative data. They are puppets that pull from the logic layer.
-
-- **`Vehicle3D`**: Implements the GEVP physics based on the `VehicleData` stats.
-- **`Player`**: Handles camera and movement basis relative to the `SimulationCore` stats (like stamina).
+`GameInput.ensure_default_bindings()` provides default key mappings used by UI and debug tools.
 
 ---
 
-## :file_folder: Data Pipeline Flow
+## Authoritative Data Layer
 
-```mermaid
-sequenceDiagram
-    participant P as Player (View)
-    participant S as SimulationCore (Logic)
-    participant D as Data Layer (Resource)
+Core authoritative state is held by `GameManager.session`:
 
-    P->>S: Request Interaction (e.g., Use Fuel)
-    S->>D: Validate & Update Stats
-    D-->>S: State Changed
-    S-->>P: Emit Signal (Update UI/Visuals)
-```
+- `TimeManager` for calendar/time progression.
+- `EntityManager` for runtime entity/component graph.
+- `FarmData` for tile state and growth simulation.
+
+The data layer is not tied to scene-node lifetime.
+View nodes can be despawned and recreated from stored components and farm tiles.
+
+---
+
+## Streamed View Layer
+
+Two streaming concerns run in parallel:
+
+- UESS entity views via `Scripts/streaming/StreamSpooler.gd`.
+- Farm/crop chunk visuals via `Scripts/farm/GridManager.gd` and `Scripts/farm/CropNode.gd`.
+
+At runtime, both systems hydrate from the same authoritative state and can be rebuilt after load.
+
+---
+
+## Save And Load Integration
+
+`SaveManager` is the persistence coordinator.
+For the full persistence contract see [Save/Load Runtime](save_load_runtime.md).
+
+At a high level:
+
+1. Save emits `EventBus.pre_save_flush` so active streamed views flush current physics state back into components.
+2. Save writes a temp slot payload, then promotes it with an atomic directory swap.
+3. Load pauses the tree, freezes streaming, wipes runtime views safely, restores data, rebuilds visuals, and resumes.
+4. Load emits `EventBus.game_loaded_successfully` after hydration completes.
+
+---
+
+## Runtime Signal Boundaries
+
+`EventBus` is the cross-system contract for save/load orchestration:
+
+- `save_game_requested`
+- `pre_save_flush`
+- `load_game_requested`
+- `game_loaded_successfully`
+
+UI and console invoke `SaveManager` directly for explicit slot control, while these signals remain available as global hooks.

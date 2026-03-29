@@ -94,19 +94,13 @@ func _ready() -> void:
 	_publish_player_state_to_simulation_core()
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Godot callback: handles input not consumed elsewhere; processes mouse-look and toggles mouse capture.
+	# Godot callback: handles input not consumed elsewhere; processes mouse-look.
 	
 	if GameInput.is_gameplay_input_blocked(get_tree()):
 		return
 
 	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		_camera_controller.handle_mouse_motion(event.relative)
-	
-	if event.is_action_pressed("ui_cancel"):
-		if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-			Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-		else:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 func _input(event: InputEvent) -> void:
 	# Godot callback: primary input handler; toggles help, equips tools, interacts, adjusts zoom, and uses the active tool.

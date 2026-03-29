@@ -1,4 +1,4 @@
-# :package: Items and Inventory System | [Home](../index.md)
+# 📦 Items and Inventory System | [Home](../index.md)
 
 The Item and Inventory framework is a robust, systemic solution implemented in Godot 4. This system handles discrete physical items ("Apples") and bulk commodities ("Water").
 
@@ -6,7 +6,7 @@ The Item and Inventory framework is a robust, systemic solution implemented in G
 
 ## 1. Data Architecture
 
-!!! gear "Authoritative Logic Layer"
+!!! tip "Authoritative Logic Layer"
     The architecture draws a strict line between **Static Definitions** and **Runtime Instances**, preventing memory bloat and improving serialization speeds.
 
 ### Definitions (`Resource`)

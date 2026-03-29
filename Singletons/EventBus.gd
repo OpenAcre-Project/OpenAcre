@@ -20,6 +20,8 @@ signal entity_view_released(entity_id: StringName)
 @warning_ignore("unused_signal")
 signal save_game_requested
 @warning_ignore("unused_signal")
+signal pre_save_flush
+@warning_ignore("unused_signal")
 signal load_game_requested
 @warning_ignore("unused_signal")
 signal game_loaded_successfully

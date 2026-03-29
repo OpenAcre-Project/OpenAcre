@@ -1,4 +1,4 @@
-# :world_map: Map Fields Architecture | [Home](../index.md)
+# 🗺️ Map Fields Architecture | [Home](../index.md)
 
 OpenAcre supports a modular map architecture where each map can define its own plowing fields via a data-driven approach. This keeps the engine robust and completely generic to map variations.
 
@@ -12,7 +12,7 @@ OpenAcre supports a modular map architecture where each map can define its own p
 - **`field_data_json`**: The relative path to a JSON file containing the polygon coordinates.
 - **`field_data_offset`**: Allows shifting the imported polygon coordinates universally (e.g., `Vector2(1024, 1024)`), reconciling external origin coordinate systems with Godot's `Terrain3D` positive integer grids.
 
-### :json: JSON Field Format
+### 🗂️ JSON Field Format
 Maps parse raw polygon vertices mapped in 3D, but only extract the `X` and `Z` bounds. The `Y` height dimension is stripped entirely. 
 
 !!! info "Height Independence"

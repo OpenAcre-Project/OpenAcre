@@ -1,4 +1,4 @@
-# :memo: Addon Patch Notes | [Home](../index.md)
+# 📝 Addon Patch Notes | [Home](../index.md)
 
 This project does not git-track addon sources, so this file records local addon modifications for reproducibility and community sharing.
 

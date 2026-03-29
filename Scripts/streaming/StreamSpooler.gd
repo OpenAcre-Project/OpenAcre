@@ -42,6 +42,11 @@ var _scene_cache: Dictionary = {} # scene_path -> PackedScene
 
 var _stream_timer: float = 0.0
 var _bound_to_entity_manager: bool = false
+var _streaming_enabled: bool = true
+
+var _load_blackout_frames: int = 0
+var _pending_blackout_release: bool = false
+var _blackout_release_states: Dictionary = {} # entity_id -> { sleeping, linear_velocity, angular_velocity }
 
 func _ready() -> void:
 	_bind_to_entity_manager()
@@ -52,6 +57,8 @@ func _ready() -> void:
 	# Connect to EventBus for external view release notifications (e.g., item pickup)
 	if EventBus.has_signal("entity_view_released"):
 		EventBus.entity_view_released.connect(_on_entity_view_released)
+	if EventBus.has_signal("pre_save_flush"):
+		EventBus.pre_save_flush.connect(_on_pre_save_flush)
 
 func _bind_to_entity_manager() -> void:
 	if GameManager.session and GameManager.session.entities:
@@ -344,10 +351,108 @@ func release_view(entity_id: StringName) -> void:
 func _on_entity_view_released(entity_id: StringName) -> void:
 	release_view(entity_id)
 
+func _on_pre_save_flush() -> void:
+	flush_active_views_to_data()
+
+func set_streaming_enabled(enabled: bool) -> void:
+	_streaming_enabled = enabled
+
+func flush_active_views_to_data() -> void:
+	for entity_id_any: Variant in _spawned_views.keys():
+		if entity_id_any is not StringName:
+			continue
+		var entity_id: StringName = entity_id_any
+		var view: Node = _spawned_views.get(entity_id, null)
+		if view != null and is_instance_valid(view) and view.has_method("extract_data"):
+			view.extract_data()
+
+func clear_runtime_view_state(use_queue_free: bool = true) -> void:
+	flush_active_views_to_data()
+
+	for entity_id_any: Variant in _spawned_views.keys():
+		if entity_id_any is not StringName:
+			continue
+		var entity_id: StringName = entity_id_any
+		var view: Node = _spawned_views.get(entity_id, null)
+		if view == null or not is_instance_valid(view):
+			continue
+
+		if view is Vehicle3D:
+			var vehicle_view := view as Vehicle3D
+			if vehicle_view.is_driven:
+				vehicle_view.force_eject()
+
+		if view.get_parent():
+			view.get_parent().remove_child(view)
+
+		if use_queue_free:
+			view.queue_free()
+		else:
+			view.free()
+
+	_pending_load.clear()
+	_pending_unload.clear()
+	_pending_resource.clear()
+	_spawned_views.clear()
+	_blackout_release_states.clear()
+
+func begin_load_blackout(physics_frames: int = 3) -> void:
+	_load_blackout_frames = maxi(physics_frames, 0)
+	_pending_blackout_release = _load_blackout_frames > 0
+	_blackout_release_states.clear()
+
+func finalize_load_blackout() -> void:
+	if not _pending_blackout_release:
+		return
+	_pending_blackout_release = false
+	call_deferred("_release_blackout_after_settle")
+
+func _release_blackout_after_settle() -> void:
+	var tree: SceneTree = get_tree()
+	if tree == null:
+		_load_blackout_frames = 0
+		_blackout_release_states.clear()
+		return
+
+	for _i: int in range(_load_blackout_frames):
+		await tree.physics_frame
+
+	for entity_id_any: Variant in _blackout_release_states.keys():
+		if entity_id_any is not StringName:
+			continue
+		var entity_id: StringName = entity_id_any
+		var view: Node = _spawned_views.get(entity_id, null)
+		if view == null or not is_instance_valid(view):
+			continue
+		if view is not RigidBody3D:
+			continue
+
+		var rb: RigidBody3D = view as RigidBody3D
+		var restore: Dictionary = _blackout_release_states[entity_id]
+		var was_sleeping: bool = bool(restore.get("sleeping", false))
+		var lv: Vector3 = restore.get("linear_velocity", Vector3.ZERO)
+		var av: Vector3 = restore.get("angular_velocity", Vector3.ZERO)
+
+		rb.freeze = false
+		if was_sleeping:
+			rb.sleeping = true
+			rb.linear_velocity = Vector3.ZERO
+			rb.angular_velocity = Vector3.ZERO
+		else:
+			rb.sleeping = false
+			rb.linear_velocity = lv
+			rb.angular_velocity = av
+
+	_load_blackout_frames = 0
+	_blackout_release_states.clear()
+
 func _process(delta: float) -> void:
 	# Lazy-bind if session wasn't ready during _ready()
 	if not _bound_to_entity_manager:
 		_bind_to_entity_manager()
+
+	if not _streaming_enabled:
+		return
 
 	# Drive the spooler loop: poll player position at configurable interval
 	_stream_timer += delta
@@ -482,6 +587,7 @@ func _spawn_view_entity(view: EntityView3DRef, active_entity: EntityDataRef, spa
 	if view is Vehicle3D:
 		spawn_parent.add_child(view)
 		view.apply_data(active_entity)
+		_register_blackout_body(active_entity, view)
 		return
 
 	# Pre-applying before parenting avoids a redundant transform pass when the parent
@@ -492,6 +598,35 @@ func _spawn_view_entity(view: EntityView3DRef, active_entity: EntityDataRef, spa
 	else:
 		spawn_parent.add_child(view)
 		view.apply_data(active_entity)
+
+	_register_blackout_body(active_entity, view)
+
+func _register_blackout_body(active_entity: EntityDataRef, view: Node) -> void:
+	if _load_blackout_frames <= 0:
+		return
+	if view is not RigidBody3D:
+		return
+
+	var rb: RigidBody3D = view as RigidBody3D
+	var tf: TransformComponent = active_entity.get_transform()
+	var was_sleeping: bool = false
+	var lv: Vector3 = Vector3.ZERO
+	var av: Vector3 = Vector3.ZERO
+	if tf != null:
+		was_sleeping = tf.is_sleeping
+		lv = tf.linear_velocity
+		av = tf.angular_velocity
+
+	_blackout_release_states[active_entity.runtime_id] = {
+		"sleeping": was_sleeping,
+		"linear_velocity": lv,
+		"angular_velocity": av
+	}
+
+	rb.freeze = true
+	rb.sleeping = true
+	rb.linear_velocity = Vector3.ZERO
+	rb.angular_velocity = Vector3.ZERO
 
 func _can_preapply_data_before_parent(spawn_parent: Node) -> bool:
 	if spawn_parent is not Node3D:
@@ -511,7 +646,7 @@ func _is_identity_world_transform(xf: Transform3D, epsilon: float = 0.0001) -> b
 		return false
 	return true
 
-func refresh_from_current_chunks(reason: String = "manual") -> void:
+func refresh_from_current_chunks(_reason: String = "manual") -> void:
 	if not GameManager.session or not GameManager.session.entities:
 		return
 	var em := GameManager.session.entities as EntityManager

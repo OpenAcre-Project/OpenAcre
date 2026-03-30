@@ -78,6 +78,13 @@ func _refresh_text() -> void:
 		GameManager.session.farm.get_seeded_tile_count()
 	]
 
+	var work_line := "Work  [No recent reports]"
+	var soil_service: Node = get_tree().get_first_node_in_group("soil_layer_service")
+	if soil_service != null and soil_service.has_method("get_last_work_report_summaries"):
+		var summaries: Array[String] = soil_service.get_last_work_report_summaries()
+		if not summaries.is_empty():
+			work_line = "Work  " + _format_recent_work_summaries(summaries)
+
 	# Chunk stats: currently loaded (visual) / total data chunks
 	var loaded_visual := 0
 	var center := Vector2i.ZERO
@@ -141,12 +148,22 @@ func _refresh_text() -> void:
 			veh_line = "Vehicle  id=%s  cargo_mass=%.0f kg %s" % [active_veh_id, total_mass, tank_info]
 
 	var controls_line := "Toggle  %s" % GameInput.get_action_binding_text(GameInput.ACTION_TOGGLE_DEBUG)
-	_label.text = "SIM DEBUG\n\n%s\n%s\n%s\n%s\n%s\n%s\n\n%s" % [
+	_label.text = "SIM DEBUG\n\n%s\n%s\n%s\n%s\n%s\n%s\n%s\n\n%s" % [
 		player_pos_line,
 		farm_line,
+		work_line,
 		chunk_line,
 		inv_line,
 		veh_line,
 		ray_line,
 		controls_line
 	]
+
+func _format_recent_work_summaries(summaries: Array[String]) -> String:
+	var out := ""
+	var start_idx: int = maxi(0, summaries.size() - 2)
+	for idx: int in range(start_idx, summaries.size()):
+		if not out.is_empty():
+			out += " | "
+		out += summaries[idx]
+	return out

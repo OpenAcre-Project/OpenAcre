@@ -66,17 +66,30 @@ static func _isolate_runtime_terrain_data(tree: SceneTree) -> void:
 		return
 
 	var source_data: Resource = null
+	var source_mode: String = ""
 	if terrain.has_method("get_data"):
 		var data_candidate: Variant = terrain.call("get_data")
 		if data_candidate is Resource:
 			source_data = data_candidate
+			source_mode = "data"
+	if source_data == null and terrain.has_method("get_storage"):
+		var storage_candidate: Variant = terrain.call("get_storage")
+		if storage_candidate is Resource:
+			source_data = storage_candidate
+			source_mode = "storage"
 	elif "data" in terrain:
 		var data_property: Variant = terrain.get("data")
 		if data_property is Resource:
 			source_data = data_property
+			source_mode = "data_property"
+	if source_data == null and "storage" in terrain:
+		var storage_property: Variant = terrain.get("storage")
+		if storage_property is Resource:
+			source_data = storage_property
+			source_mode = "storage_property"
 
 	if source_data == null:
-		GameLog.warn("[MapManager] Terrain3D data unavailable for runtime isolation.")
+		GameLog.info("[MapManager] Terrain3D runtime isolation skipped (no data/storage API resource found).")
 		return
 
 	var runtime_copy: Resource = source_data.duplicate(true)
@@ -84,13 +97,35 @@ static func _isolate_runtime_terrain_data(tree: SceneTree) -> void:
 		GameLog.error("[MapManager] Failed to duplicate Terrain3D data resource.")
 		return
 
-	if terrain.has_method("set_data"):
-		terrain.call("set_data", runtime_copy)
-	elif "data" in terrain:
-		terrain.set("data", runtime_copy)
-	else:
-		GameLog.error("[MapManager] Terrain3D node does not support setting data resource.")
-		return
+	match source_mode:
+		"data":
+			if terrain.has_method("set_data"):
+				terrain.call("set_data", runtime_copy)
+			else:
+				GameLog.error("[MapManager] Terrain3D get_data() was available, but set_data() is missing.")
+				return
+		"storage":
+			if terrain.has_method("set_storage"):
+				terrain.call("set_storage", runtime_copy)
+			else:
+				GameLog.error("[MapManager] Terrain3D get_storage() was available, but set_storage() is missing.")
+				return
+		"data_property":
+			terrain.set("data", runtime_copy)
+		"storage_property":
+			terrain.set("storage", runtime_copy)
+		_:
+			if terrain.has_method("set_data"):
+				terrain.call("set_data", runtime_copy)
+			elif terrain.has_method("set_storage"):
+				terrain.call("set_storage", runtime_copy)
+			elif "data" in terrain:
+				terrain.set("data", runtime_copy)
+			elif "storage" in terrain:
+				terrain.set("storage", runtime_copy)
+			else:
+				GameLog.error("[MapManager] Terrain3D node does not support setting runtime data/storage resource.")
+				return
 
 	terrain.set_meta("runtime_terrain_data_isolated", true)
 	GameLog.info("[MapManager] Isolated runtime Terrain3D data from pristine map resource.")

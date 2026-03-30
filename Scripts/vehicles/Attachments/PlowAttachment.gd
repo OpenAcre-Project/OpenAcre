@@ -1,7 +1,10 @@
 extends "res://Scripts/vehicles/Implement3D.gd"
 
+const WORK_OPERATION_TYPE_SCRIPT = preload("res://Scripts/farm/work/WorkOperationType.gd")
+
 @export var plow_width: float = 3.0
 @export var min_apply_speed_sq: float = 0.005
+@export var max_tiles_per_step: int = -1
 @export var ground_contact_probe_margin: float = 0.20
 @export var ground_contact_probe_depth: float = 1.50
 @export var use_terrain_probe_fallback: bool = true
@@ -14,6 +17,7 @@ var _teeth_region_default_monitoring: bool = true
 var _teeth_region_default_monitorable: bool = true
 var _teeth_region_default_layer: int = 1
 var _teeth_region_default_mask: int = 1
+var _last_rejection_log_msec: int = 0
 
 func _ready() -> void:
 	required_power_kw = 25.0
@@ -54,6 +58,22 @@ func _physics_process(_delta: float) -> void:
 		return
 
 	var soil_service: Node = get_tree().get_first_node_in_group("soil_layer_service")
+	var move_speed_mps: float = sqrt(maxf(move_speed_sq, 0.0))
+	if soil_service != null and soil_service.has_method("process_work_batch") and has_method("collect_work_requests"):
+		if not can_emit_work_requests(move_speed_mps):
+			return
+		var payload := {
+			"soil_state_output": FarmData.SoilState.PLOWED,
+			"depth_offset": -0.15,
+			"blend_mode": GroundEffector3D.BlendMode.ADD
+		}
+		var requests: Array = collect_work_requests(WORK_OPERATION_TYPE_SCRIPT.Value.TILLAGE, payload, false, max_tiles_per_step)
+		if requests.is_empty():
+			return
+		var reports: Array = soil_service.process_work_batch(requests)
+		_handle_work_reports(reports)
+		return
+
 	if soil_service != null and soil_service.has_method("apply_ground_effectors"):
 		var batch: Array[Dictionary] = collect_ground_effector_batch(false)
 		if not batch.is_empty():
@@ -62,6 +82,28 @@ func _physics_process(_delta: float) -> void:
 
 	# Legacy fallback for scenes that have no GroundEffector3D nodes yet.
 	_plow_ground()
+
+func _handle_work_reports(reports: Array) -> void:
+	var successful_area: float = 0.0
+	var rejected_tiles: int = 0
+	for report_any: Variant in reports:
+		if report_any == null:
+			continue
+		var report: WorkReport = report_any
+		successful_area += report.successful_area
+		rejected_tiles += report.rejected_unfarmable + report.rejected_wrong_state + report.rejected_height + report.rejected_budget
+
+	if successful_area > 0.0:
+		return
+
+	if rejected_tiles <= 0:
+		return
+
+	var now: int = Time.get_ticks_msec()
+	if now - _last_rejection_log_msec < 800:
+		return
+	_last_rejection_log_msec = now
+	GameLog.info("[PlowAttachment] Work pass rejected (%d tiles)." % rejected_tiles)
 
 func _is_touching_floor() -> bool:
 	var overlapping_bodies: Array = detection_area.get_overlapping_bodies()

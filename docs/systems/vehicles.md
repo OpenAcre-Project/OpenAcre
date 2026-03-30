@@ -54,8 +54,15 @@ Vehicles that support towing implements must use a component-based attachment sy
 - **StreamingGroup Integration**: When an implement is attached, `HitchSocket3D` assigns both entities to the same `StreamingGroup`, ensuring the entire chain stays loaded across chunk boundaries.
 - **Signal-Bound Teardowns**: Socket interactions use memory-safe signals (`signal.connect(_func.bind(socket))`).
 
-!!! info "Ground Deformation Source of Truth"
-    For plow teeth setup, GroundEffector markers, terrain write flow, persistence behavior, and tuning guidance, use [Ground Effectors and Plowing](ground_effectors_and_plowing.md).
+!!! info "Implements Source of Truth"
+    For full implement architecture and setup (work contracts, arbitrator flow, geometry, drag, hitch rigidity tuning, and complete onboarding), use [Implements, Ground Arbitrator, and Plowing](ground_effectors_and_plowing.md).
+
+### Implement Quick Setup (Summary)
+1. Build implement scene on top of `Implement3D`.
+2. Set hitch/power/gating exports (`required_hitch_type`, PTO/lowering/speed gates).
+3. Add `GroundEffector3D` markers or span quad markers.
+4. Generate requests and process reports through `SoilLayerService.process_work_batch(...)`.
+5. Validate with `SimulationDebugOverlay` work summary output.
 
 ---
 

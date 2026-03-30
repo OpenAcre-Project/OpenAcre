@@ -21,6 +21,8 @@ var _pending_height_map_rebuild: bool = false
 var _pending_control_map_rebuild: bool = false
 var _last_map_rebuild_msec: int = 0
 var _edited_regions: Dictionary = {}
+var _last_work_reports: Array = []
+var _last_work_report_summaries: Array[String] = []
 
 const MAP_TYPE_HEIGHT: int = 0
 const MAP_TYPE_CONTROL: int = 1
@@ -28,6 +30,10 @@ const MAP_TYPE_ALL: int = 3
 const BLEND_MODE_ADD: int = 0
 const BLEND_MODE_SUBTRACT: int = 1
 const BLEND_MODE_REPLACE_EXACT: int = 2
+const TILE_AREA_M2: float = 1.0
+const WORK_REQUEST_SCRIPT = preload("res://Scripts/farm/work/WorkRequest.gd")
+const WORK_REPORT_SCRIPT = preload("res://Scripts/farm/work/WorkReport.gd")
+const WORK_OPERATION_TYPE_SCRIPT = preload("res://Scripts/farm/work/WorkOperationType.gd")
 
 func _ready() -> void:
 	add_to_group("soil_layer_service")
@@ -82,23 +88,62 @@ func refresh_terrain_api() -> void:
 
 # Called by PlowAttachment.gd
 func plow_world(world_pos: Vector3) -> bool:
-	var grid_pos := GameManager.session.farm.world_to_grid(world_pos)
-	var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
-
-	if tile_data.state == FarmData.SoilState.GRASS:
-		# Modifies logical grid, emits "tile_updated", which triggers the visual paint below
-		GameManager.session.farm.set_tile_state(grid_pos, FarmData.SoilState.PLOWED, world_pos.y)
-		return true
-	return false
+	var request := WORK_REQUEST_SCRIPT.point(
+		WORK_OPERATION_TYPE_SCRIPT.Value.TILLAGE,
+		world_pos,
+		0.49,
+		{
+			"soil_state_output": FarmData.SoilState.PLOWED,
+			"depth_offset": -0.05,
+			"blend_mode": BLEND_MODE_ADD
+		},
+		&"legacy.plow_world",
+		1
+	)
+	request.engagement_height = world_pos.y
+	request.engagement_margin = default_engagement_margin_meters
+	var reports: Array = process_work_batch([request])
+	if reports.is_empty():
+		return false
+	var report: WorkReport = reports[0]
+	return report.successful_area > 0.0
 
 # Called by SeedTool.gd
 func seed_world(world_pos: Vector3) -> bool:
-	var grid_pos := GameManager.session.farm.world_to_grid(world_pos)
-	var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
+	var request := WORK_REQUEST_SCRIPT.point(
+		WORK_OPERATION_TYPE_SCRIPT.Value.SOWING,
+		world_pos,
+		0.49,
+		{
+			"seed_item_id": &"generic",
+			"growth_minutes_required": GameManager.session.farm.DEFAULT_CROP_GROWTH_MINUTES
+		},
+		&"legacy.seed_world",
+		1
+	)
+	request.engagement_height = world_pos.y
+	request.engagement_margin = default_engagement_margin_meters
+	var reports: Array = process_work_batch([request])
+	if reports.is_empty():
+		return false
+	var report: WorkReport = reports[0]
+	return report.successful_area > 0.0
 
-	if tile_data.state == FarmData.SoilState.PLOWED:
-		return GameManager.session.farm.plant_crop(grid_pos, &"generic", GameManager.session.farm.DEFAULT_CROP_GROWTH_MINUTES, world_pos.y)
-	return false
+func harvest_world(world_pos: Vector3, payload: Dictionary = {}) -> WorkReport:
+	var request := WORK_REQUEST_SCRIPT.point(
+		WORK_OPERATION_TYPE_SCRIPT.Value.HARVESTING,
+		world_pos,
+		0.49,
+		payload,
+		&"legacy.harvest_world",
+		1
+	)
+	request.engagement_height = world_pos.y
+	request.engagement_margin = default_engagement_margin_meters
+	var reports: Array = process_work_batch([request])
+	if reports.is_empty():
+		return WORK_REPORT_SCRIPT.new().set_operation(WORK_OPERATION_TYPE_SCRIPT.Value.HARVESTING)
+	return reports[0]
 
 func _on_tile_updated(grid_pos: Vector2i, new_state: int) -> void:
 	if not _runtime_paint_ready or _suppress_tile_signal_paint:
@@ -111,8 +156,47 @@ func apply_ground_effectors(batch: Array[Dictionary], force_collision_rebuild_no
 	if batch.is_empty():
 		return false
 
-	if _terrain_api == null:
-		return false
+	var requests: Array = []
+	for instruction_any: Variant in batch:
+		if instruction_any is not Dictionary:
+			continue
+		var instruction: Dictionary = instruction_any
+		var current_pos: Vector3 = instruction.get("current_pos", Vector3.ZERO)
+		var previous_pos: Vector3 = instruction.get("previous_pos", current_pos)
+		var radius: float = maxf(float(instruction.get("radius", plow_brush_radius)), 0.01)
+		var req := WORK_REQUEST_SCRIPT.line_sweep(
+			int(instruction.get("operation", WORK_OPERATION_TYPE_SCRIPT.Value.TILLAGE)),
+			previous_pos,
+			current_pos,
+			radius,
+			{
+				"depth_offset": float(instruction.get("depth_offset", 0.0)),
+				"blend_mode": int(instruction.get("blend_mode", BLEND_MODE_ADD)),
+				"soil_state_output": int(instruction.get("soil_state_output", FarmData.SoilState.PLOWED)),
+				"seed_item_id": instruction.get("seed_item_id", &"generic"),
+				"growth_minutes_required": int(instruction.get("growth_minutes_required", GameManager.session.farm.DEFAULT_CROP_GROWTH_MINUTES)),
+				"base_tile_yield": float(instruction.get("base_tile_yield", 1.0))
+			},
+			StringName(String(instruction.get("effector_path", "legacy.effector"))),
+			int(instruction.get("max_budget", -1))
+		)
+		req.engagement_height = current_pos.y
+		req.engagement_margin = float(instruction.get("engagement_margin", default_engagement_margin_meters))
+		requests.append(req)
+
+	var reports: Array = process_work_batch(requests, force_collision_rebuild_now)
+	for report_any: Variant in reports:
+		if report_any != null and float(report_any.successful_area) > 0.0:
+			return true
+	return false
+
+func process_work_batch(requests: Array, force_collision_rebuild_now: bool = false, collect_debug_tiles: bool = false) -> Array:
+	var reports: Array = []
+	_last_work_reports.clear()
+	_last_work_report_summaries.clear()
+
+	if requests.is_empty() or _terrain_api == null or GameManager.session == null or GameManager.session.farm == null:
+		return reports
 
 	var baseline_cache: Dictionary = {}
 	var logical_state_updates: Dictionary = {}
@@ -123,16 +207,71 @@ func apply_ground_effectors(batch: Array[Dictionary], force_collision_rebuild_no
 	_batch_painting = true
 	_suppress_tile_signal_paint = true
 
-	for instruction_any: Variant in batch:
-		if instruction_any is not Dictionary:
+	for request_any: Variant in requests:
+		if request_any is not WorkRequest:
 			continue
-		var instruction: Dictionary = instruction_any
-		var apply_result: Dictionary = _apply_ground_effector_instruction(instruction, baseline_cache, logical_state_updates)
-		if bool(apply_result.get("height_changed", false)):
-			any_height_changed = true
-		if bool(apply_result.get("control_changed", false)):
-			any_control_changed = true
-		longest_segment = maxf(longest_segment, float(apply_result.get("segment_distance", 0.0)))
+		var request: WorkRequest = request_any
+		var report := WORK_REPORT_SCRIPT.new().set_operation(request.operation)
+
+		var candidate_tiles: Array[Vector2i] = _rasterize_work_request_to_sorted_tiles(request)
+		report.requested_area = float(candidate_tiles.size()) * TILE_AREA_M2
+		var accepted_count: int = 0
+		var max_budget: int = request.max_budget
+
+		for grid_pos: Vector2i in candidate_tiles:
+			var world_center: Vector3 = _grid_center_to_world(grid_pos)
+			if not GameManager.session.farm.can_plow_at(world_center):
+				report.rejected_unfarmable += 1
+				if collect_debug_tiles:
+					report.rejected_tiles.append(grid_pos)
+				continue
+
+			var tile_data: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos)
+			if not _can_apply_operation_to_tile(request.operation, tile_data):
+				report.rejected_wrong_state += 1
+				if collect_debug_tiles:
+					report.rejected_tiles.append(grid_pos)
+				continue
+
+			var sample_height: float = _sample_ground_height(world_center)
+			if not _passes_height_gate(request, sample_height):
+				report.rejected_height += 1
+				if collect_debug_tiles:
+					report.rejected_tiles.append(grid_pos)
+				continue
+
+			if max_budget > 0 and accepted_count >= max_budget:
+				report.rejected_budget += 1
+				if collect_debug_tiles:
+					report.rejected_tiles.append(grid_pos)
+				continue
+
+			var execute_result: Dictionary = _execute_request_for_tile(request, grid_pos, sample_height, baseline_cache, logical_state_updates)
+			if not bool(execute_result.get("applied", false)):
+				report.rejected_wrong_state += 1
+				if collect_debug_tiles:
+					report.rejected_tiles.append(grid_pos)
+				continue
+
+			accepted_count += 1
+			if collect_debug_tiles:
+				report.accepted_tiles.append(grid_pos)
+
+			any_height_changed = any_height_changed or bool(execute_result.get("height_changed", false))
+			any_control_changed = any_control_changed or bool(execute_result.get("control_changed", false))
+			longest_segment = maxf(longest_segment, float(execute_result.get("segment_distance", 0.0)))
+
+			var yield_generated: Dictionary = execute_result.get("yield_generated", {})
+			for yield_key_any: Variant in yield_generated.keys():
+				var yield_key: StringName = StringName(String(yield_key_any))
+				report.add_yield(yield_key, float(yield_generated[yield_key_any]))
+
+		report.successful_area = float(accepted_count) * TILE_AREA_M2
+		report.rejected_area = float(report.rejected_unfarmable + report.rejected_wrong_state + report.rejected_height + report.rejected_budget) * TILE_AREA_M2
+		report.finalize(TILE_AREA_M2)
+		reports.append(report)
+		_last_work_reports.append(report)
+		_last_work_report_summaries.append(report.to_log_summary())
 
 	for grid_pos_any: Variant in logical_state_updates.keys():
 		if grid_pos_any is not Vector2i:
@@ -158,7 +297,241 @@ func apply_ground_effectors(batch: Array[Dictionary], force_collision_rebuild_no
 		_update_terrain_collision(false)
 		_collision_distance_accumulator = 0.0
 
-	return any_height_changed or any_control_changed
+	return reports
+
+func get_last_work_reports() -> Array:
+	return _last_work_reports.duplicate()
+
+func get_last_work_report_summaries() -> Array[String]:
+	return _last_work_report_summaries.duplicate()
+
+func _rasterize_work_request_to_sorted_tiles(request: WorkRequest) -> Array[Vector2i]:
+	var tile_set: Dictionary = {}
+	match request.geometry_type:
+		WorkRequest.GeometryType.POINT_RADIUS:
+			_collect_tiles_in_point_radius(request.point_center, request.radius_meters, tile_set)
+		WorkRequest.GeometryType.LINE_SWEEP:
+			_collect_tiles_in_line_capsule(request.line_start, request.line_end, request.radius_meters, tile_set)
+		WorkRequest.GeometryType.QUAD_SWEEP:
+			_collect_tiles_in_quad(request.quad_points_xz, tile_set)
+		_:
+			_collect_tiles_in_point_radius(request.point_center, request.radius_meters, tile_set)
+
+	var out: Array[Vector2i] = []
+	for grid_pos_any: Variant in tile_set.keys():
+		if grid_pos_any is Vector2i:
+			out.append(grid_pos_any)
+	out.sort_custom(Callable(self, "_sort_grid_positions"))
+	return out
+
+func _collect_tiles_in_point_radius(center_pos: Vector3, radius_meters: float, out_set: Dictionary) -> void:
+	var radius: float = maxf(radius_meters, 0.01)
+	var center_xz := Vector2(center_pos.x, center_pos.z)
+	var min_x: int = int(floor(center_xz.x - radius))
+	var max_x: int = int(ceil(center_xz.x + radius))
+	var min_z: int = int(floor(center_xz.y - radius))
+	var max_z: int = int(ceil(center_xz.y + radius))
+	var radius_sq: float = radius * radius
+
+	for x: int in range(min_x, max_x + 1):
+		for z: int in range(min_z, max_z + 1):
+			var tile_center := Vector2(float(x) + 0.5, float(z) + 0.5)
+			if tile_center.distance_squared_to(center_xz) <= radius_sq:
+				out_set[Vector2i(x, z)] = true
+
+func _collect_tiles_in_line_capsule(start_pos: Vector3, end_pos: Vector3, radius_meters: float, out_set: Dictionary) -> void:
+	var radius: float = maxf(radius_meters, 0.01)
+	var a := Vector2(start_pos.x, start_pos.z)
+	var b := Vector2(end_pos.x, end_pos.z)
+	var min_x: int = int(floor(minf(a.x, b.x) - radius))
+	var max_x: int = int(ceil(maxf(a.x, b.x) + radius))
+	var min_z: int = int(floor(minf(a.y, b.y) - radius))
+	var max_z: int = int(ceil(maxf(a.y, b.y) + radius))
+	var radius_sq: float = radius * radius
+
+	for x: int in range(min_x, max_x + 1):
+		for z: int in range(min_z, max_z + 1):
+			var tile_center := Vector2(float(x) + 0.5, float(z) + 0.5)
+			if _distance_sq_to_segment_2d(tile_center, a, b) <= radius_sq:
+				out_set[Vector2i(x, z)] = true
+
+func _collect_tiles_in_quad(quad_points_xz: Array[Vector2], out_set: Dictionary) -> void:
+	if quad_points_xz.size() < 3:
+		return
+
+	var min_x: float = INF
+	var max_x: float = -INF
+	var min_z: float = INF
+	var max_z: float = -INF
+	for point: Vector2 in quad_points_xz:
+		min_x = minf(min_x, point.x)
+		max_x = maxf(max_x, point.x)
+		min_z = minf(min_z, point.y)
+		max_z = maxf(max_z, point.y)
+
+	for x: int in range(int(floor(min_x)), int(ceil(max_x)) + 1):
+		for z: int in range(int(floor(min_z)), int(ceil(max_z)) + 1):
+			var tile_center := Vector2(float(x) + 0.5, float(z) + 0.5)
+			if Geometry2D.is_point_in_polygon(tile_center, quad_points_xz):
+				out_set[Vector2i(x, z)] = true
+
+func _distance_sq_to_segment_2d(p: Vector2, a: Vector2, b: Vector2) -> float:
+	var ab: Vector2 = b - a
+	var ab_len_sq: float = ab.length_squared()
+	if ab_len_sq <= 0.000001:
+		return p.distance_squared_to(a)
+	var t: float = clampf((p - a).dot(ab) / ab_len_sq, 0.0, 1.0)
+	var closest: Vector2 = a + ab * t
+	return p.distance_squared_to(closest)
+
+func _sort_grid_positions(a: Vector2i, b: Vector2i) -> bool:
+	if a.x == b.x:
+		return a.y < b.y
+	return a.x < b.x
+
+func _grid_center_to_world(grid_pos: Vector2i) -> Vector3:
+	var center_xz: Vector2 = GameManager.session.farm.grid_to_world_center(grid_pos)
+	return Vector3(center_xz.x, 0.0, center_xz.y)
+
+func _can_apply_operation_to_tile(operation: int, tile_data: FarmTileData) -> bool:
+	match operation:
+		WORK_OPERATION_TYPE_SCRIPT.Value.TILLAGE:
+			return tile_data.state == FarmData.SoilState.GRASS
+		WORK_OPERATION_TYPE_SCRIPT.Value.SOWING:
+			return tile_data.state == FarmData.SoilState.PLOWED
+		WORK_OPERATION_TYPE_SCRIPT.Value.HARVESTING:
+			return tile_data.state == FarmData.SoilState.HARVESTABLE and tile_data.has_active_crop()
+		_:
+			return false
+
+func _passes_height_gate(request: WorkRequest, sample_height: float) -> bool:
+	if is_nan(sample_height):
+		return false
+	if is_nan(request.engagement_height):
+		return true
+	return request.engagement_height <= sample_height + maxf(request.engagement_margin, 0.0)
+
+func _execute_request_for_tile(request: WorkRequest, grid_pos: Vector2i, sample_height: float, baseline_cache: Dictionary, logical_state_updates: Dictionary) -> Dictionary:
+	var world_center: Vector3 = _grid_center_to_world(grid_pos)
+	world_center.y = sample_height
+	var segment_distance: float = _estimate_request_segment_distance(request)
+
+	match request.operation:
+		WORK_OPERATION_TYPE_SCRIPT.Value.TILLAGE:
+			var tillage_result: Dictionary = _apply_tillage_to_tile(request, grid_pos, world_center, sample_height, baseline_cache, logical_state_updates)
+			tillage_result["applied"] = true
+			tillage_result["segment_distance"] = segment_distance
+			return tillage_result
+		WORK_OPERATION_TYPE_SCRIPT.Value.SOWING:
+			var seed_item: StringName = StringName(String(request.payload.get("seed_item_id", "generic")))
+			var growth_minutes: int = int(request.payload.get("growth_minutes_required", GameManager.session.farm.DEFAULT_CROP_GROWTH_MINUTES))
+			if GameManager.session.farm.plant_crop(grid_pos, seed_item, growth_minutes, sample_height):
+				var sow_overlay: int = _soil_state_to_overlay_id(FarmData.SoilState.SEEDED)
+				var sow_control_changed: bool = _modify_single_pixel(world_center, sow_overlay, 0.0)
+				return {
+					"applied": true,
+					"height_changed": false,
+					"control_changed": sow_control_changed,
+					"segment_distance": segment_distance,
+					"yield_generated": {}
+				}
+			return {
+				"applied": false,
+				"height_changed": false,
+				"control_changed": false,
+				"segment_distance": 0.0,
+				"yield_generated": {}
+			}
+		WORK_OPERATION_TYPE_SCRIPT.Value.HARVESTING:
+			var tile_before: FarmTileData = GameManager.session.farm.get_tile_data(grid_pos).duplicate_data()
+			var harvest_payload: Dictionary = GameManager.session.farm.harvest_crop(grid_pos)
+			if harvest_payload.is_empty():
+				return {
+					"applied": false,
+					"height_changed": false,
+					"control_changed": false,
+					"segment_distance": 0.0,
+					"yield_generated": {}
+				}
+
+			var base_tile_yield: float = float(request.payload.get("base_tile_yield", float(harvest_payload.get("yield", 1.0))))
+			var maturity_ratio: float = _compute_harvest_maturity_ratio(tile_before)
+			var final_yield: float = maxf(base_tile_yield * maturity_ratio, 0.0)
+
+			var crop_type: String = String(harvest_payload.get("crop_type", tile_before.crop_type))
+			if crop_type.is_empty():
+				crop_type = "generic"
+			var harvest_item_id: StringName = StringName(String(request.payload.get("harvest_item_id", "item.%s" % crop_type)))
+
+			var harvest_overlay: int = _soil_state_to_overlay_id(FarmData.SoilState.PLOWED)
+			var harvest_control_changed: bool = _modify_single_pixel(world_center, harvest_overlay, 0.0)
+			return {
+				"applied": true,
+				"height_changed": false,
+				"control_changed": harvest_control_changed,
+				"segment_distance": segment_distance,
+				"yield_generated": {str(harvest_item_id): final_yield}
+			}
+		_:
+			return {
+				"applied": false,
+				"height_changed": false,
+				"control_changed": false,
+				"segment_distance": 0.0,
+				"yield_generated": {}
+			}
+
+func _apply_tillage_to_tile(request: WorkRequest, grid_pos: Vector2i, world_center: Vector3, sample_height: float, baseline_cache: Dictionary, logical_state_updates: Dictionary) -> Dictionary:
+	var depth_offset: float = float(request.payload.get("depth_offset", -0.05))
+	var blend_mode: int = int(request.payload.get("blend_mode", BLEND_MODE_ADD))
+	var soil_state_output: int = clampi(int(request.payload.get("soil_state_output", FarmData.SoilState.PLOWED)), FarmData.SoilState.GRASS, FarmData.SoilState.HARVESTABLE)
+
+	var baseline_height: float = sample_height
+	if baseline_cache.has(grid_pos):
+		baseline_height = float(baseline_cache[grid_pos])
+	else:
+		baseline_cache[grid_pos] = sample_height
+
+	var target_height: float = _resolve_target_height(blend_mode, baseline_height, depth_offset)
+	var height_changed: bool = false
+	if not is_equal_approx(target_height, sample_height):
+		height_changed = _set_height(world_center, target_height)
+
+	logical_state_updates[grid_pos] = {
+		"state": soil_state_output,
+		"height": target_height if not is_nan(target_height) else sample_height
+	}
+
+	var target_overlay_id: int = _soil_state_to_overlay_id(soil_state_output)
+	var control_changed: bool = _modify_single_pixel(world_center, target_overlay_id, 0.0)
+	return {
+		"height_changed": height_changed,
+		"control_changed": control_changed,
+		"yield_generated": {}
+	}
+
+func _estimate_request_segment_distance(request: WorkRequest) -> float:
+	match request.geometry_type:
+		WorkRequest.GeometryType.LINE_SWEEP:
+			return request.line_start.distance_to(request.line_end)
+		WorkRequest.GeometryType.QUAD_SWEEP:
+			if request.payload.has("segment_distance"):
+				return float(request.payload.get("segment_distance", 0.0))
+			if request.quad_points_xz.size() >= 4:
+				var prev_center: Vector2 = (request.quad_points_xz[0] + request.quad_points_xz[1]) * 0.5
+				var curr_center: Vector2 = (request.quad_points_xz[2] + request.quad_points_xz[3]) * 0.5
+				return prev_center.distance_to(curr_center)
+			return 0.0
+		_:
+			return 0.0
+
+func _compute_harvest_maturity_ratio(tile_data: FarmTileData) -> float:
+	if tile_data == null or not tile_data.has_active_crop():
+		return 0.0
+	var growth_required: int = maxi(tile_data.growth_minutes_required, 1)
+	var now_minutes: int = GameManager.session.farm.get_current_total_minutes()
+	var elapsed: int = maxi(0, now_minutes - tile_data.planted_at_minute)
+	return clampf(float(elapsed) / float(growth_required), 0.0, 1.0)
 
 func force_collision_rebuild() -> void:
 	_update_terrain_collision(true)

@@ -1,5 +1,10 @@
 # Advanced Attachment Systems & Physics
 
+!!! warning "Canonical Reference"
+    This page is supplementary for historical/high-fidelity math notes.
+    The implementation source of truth is [Implements, Ground Arbitrator, and Plowing](../systems/ground_effectors_and_plowing.md).
+    If any detail differs, follow the systems page.
+
 This document defines the high-fidelity hitch model used to couple a tractor and heavy implements with physically stable behavior at high mass ratios.
 
 !!! abstract "Core Philosophy"

@@ -16,7 +16,8 @@ Welcome to the **OpenAcre** Godot prototype. This project is a data-driven farmi
 
 If you are looking to understand how the game handles or how to modify existing mechanics, start here: 
 
-- **[🚜 Vehicle Physics & Implements](systems/vehicles.md)**: Handling, persistence, and component-based attachments (HitchSocket3D / Implement3D).
+- **[🚜 Vehicle Physics](systems/vehicles.md)**: Handling, persistence, and vehicle-level attachment architecture.
+- **[🧩 Implements, Ground Arbitrator, and Plowing](systems/ground_effectors_and_plowing.md)**: Canonical source for work contracts, arbitrator flow, implement setup, hitch rigidity tuning, and drag behavior.
 - **[🎥 Camera System](systems/camera.md)**: Shared OrbitCameraController and GTA-style behaviors.
 - **[🕐 Time & Day/Night Cycle](systems/day_night_cycle.md)**: Time management and visual world transitions.
 - **[📦 Items & Inventory](systems/items_and_inventory.md)**: Data-driven items, storage, and mass simulation.

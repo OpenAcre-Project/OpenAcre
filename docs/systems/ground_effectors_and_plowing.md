@@ -1,254 +1,357 @@
-# Ground Effectors and Plowing | [Home](../index.md)
+# Implements, Ground Arbitrator, and Plowing | [Home](../index.md)
 
-This page is the single source of truth for terrain deformation driven by implements (plow teeth, ridgers, and future soil tools).
+This document is the authoritative source for all agricultural implement behavior in OpenAcre.
 
----
+It covers:
 
-## Scope
+- Work contracts (`WorkRequest`, `WorkReport`, operation taxonomy)
+- Arbitrator execution pipeline (`SoilLayerService.process_work_batch`)
+- Implement setup (scene, hitch, effectors, drag, gating)
+- 3-point hitch rigidity and towing physics tuning
+- Performance, save/load, debugging, and validation
 
-This document defines:
-
-- How ground effectors are authored in scenes.
-- How runtime batching, interpolation, and terrain writes work.
-- How collision and map rebuild throttling are handled.
-- How terrain changes are persisted in save slots.
-- How to add more teeth safely and predictably.
-
-If another doc conflicts with this page, this page wins.
+If another document conflicts with this page, this page wins.
 
 ---
 
-## Runtime Architecture
+## 1. System Architecture
 
 ```mermaid
 flowchart LR
-    A[GroundEffector3D Markers] --> B[Implement3D Batch Collection]
-    B --> C[PlowAttachment Gates]
-    C --> D[SoilLayerService apply_ground_effectors]
-    D --> E[Terrain3D Height + Control Updates]
-    D --> F[FarmData Tile State Sync]
-    E --> G[Throttled map rebuilds + collision refresh]
-    G --> H[SaveManager terrain_modified.res]
+    A[Tool or Implement Input] --> B[Build WorkRequest]
+    B --> C[SoilLayerService.process_work_batch]
+    C --> D[Geometry Rasterization]
+    D --> E[Gate 1: Region Mask]
+    E --> F[Gate 2: Soil State]
+    F --> G[Gate 3: Height/Engagement]
+    G --> H[Execute Accepted Tiles]
+    H --> I[FarmData Logical State]
+    H --> J[Terrain3D Height + Control]
+    H --> K[WorkReport]
+    K --> L[Implement/Tool Resource Loop]
 ```
 
-### Core Files
+### Core runtime files
 
-- Scripts/vehicles/GroundEffector3D.gd
-- Scripts/vehicles/Implement3D.gd
-- Scripts/vehicles/Attachments/PlowAttachment.gd
-- Scripts/farm/SoilLayerService.gd
-- Scripts/vehicles/HitchSocket3D.gd
-- Singletons/SaveManager.gd
-- Scripts/core/MapManager.gd
-- Scenes/Vehicles/Attachments/PlowAttachment.tscn
+- `Scripts/farm/work/WorkOperationType.gd`
+- `Scripts/farm/work/WorkRequest.gd`
+- `Scripts/farm/work/WorkReport.gd`
+- `Scripts/farm/SoilLayerService.gd`
+- `Scripts/farm/FarmData.gd`
+- `Scripts/vehicles/Implement3D.gd`
+- `Scripts/vehicles/GroundEffector3D.gd`
+- `Scripts/vehicles/HitchSocket3D.gd`
+- `Scripts/vehicles/Attachments/PlowAttachment.gd`
 
 ---
 
-## GroundEffector3D Contract
+## 2. Work Taxonomy and Data Contracts
 
-`GroundEffector3D` is a Marker3D that serializes a single terrain instruction.
+### 2.1 WorkOperationType
 
-### Exposed Properties
+`WorkOperationType.Value` currently defines:
 
-| Property | Type | Meaning |
-| --- | --- | --- |
-| `effect_radius` | float | Stamp radius in meters. |
-| `target_depth_offset` | float | Height target control. For `ADD`, negative values carve, positive values raise. |
-| `blend_mode` | enum | `ADD`, `SUBTRACT`, or `REPLACE_EXACT`. |
-| `soil_state_output` | enum int | Logical farm state written for affected grid cells. |
-| `is_engaged` | bool | Runtime on/off flag for this tooth. |
-| `engagement_depth_margin` | float | Extra tolerance above sampled terrain before treated as disengaged. |
+- `TILLAGE`
+- `SOWING`
+- `APPLICATION`
+- `HARVESTING`
+- `CLEARING`
 
-### Blend Mode Semantics
+V1 production usage in runtime pipeline is `TILLAGE`, `SOWING`, `HARVESTING`.
 
-| Mode | Result |
+### 2.2 WorkRequest
+
+`WorkRequest` fields (canonical):
+
+| Field | Purpose |
 | --- | --- |
-| `ADD` | `target = baseline_height + target_depth_offset` |
-| `SUBTRACT` | `target = baseline_height - abs(target_depth_offset)` |
-| `REPLACE_EXACT` | `target = target_depth_offset` in world Y |
+| `operation` | Operation enum value. |
+| `geometry_type` | `POINT_RADIUS`, `LINE_SWEEP`, `QUAD_SWEEP`. |
+| `point_center`, `line_start`, `line_end`, `quad_points_xz`, `radius_meters` | Geometry payload. |
+| `payload` | Operation-specific metadata (seed ID, depth offset, blend mode, yield base, etc.). |
+| `engagement_height`, `engagement_margin` | Height gate metadata. |
+| `max_budget` | Maximum accepted tiles for commit safety. |
+| `source_tag` | Tool/implement origin marker for logs/debug. |
 
-Important rule: effector Y only controls engagement checks. It does not become the carve baseline.
+### 2.3 WorkReport
 
----
+`WorkReport` output fields:
 
-## End-to-End Plow Flow
-
-1. `PlowAttachment` runs only when lowered and active.
-2. Movement and ground-contact gates are applied.
-3. `Implement3D.collect_ground_effector_batch()` emits only effectors that are engaged and moved enough since last emit.
-4. `SoilLayerService.apply_ground_effectors()` interpolates from previous to current positions using `ground_effect_segment_length_meters`.
-5. Each segment point performs circular stamps.
-6. Terrain height and control pixels are written.
-7. Logical tile state is synchronized through `FarmData` updates.
-8. Height/control map rebuilds are coalesced and flushed by interval.
-9. Terrain collision updates are decoupled and distance-throttled.
-
----
-
-## Adding More Teeth to the Plow
-
-Use this exact workflow in Scenes/Vehicles/Attachments/PlowAttachment.tscn.
-
-1. Create a Marker3D under the plow root.
-2. Attach Scripts/vehicles/GroundEffector3D.gd.
-3. Position it where the tooth contacts terrain.
-4. Set properties for the behavior you want.
-
-### Recommended Tooth Patterns
-
-Cut tooth:
-
-- `blend_mode = ADD`
-- `target_depth_offset = -0.10` to `-0.20`
-- `effect_radius = 0.12` to `0.22`
-- `soil_state_output = PLOWED`
-
-Ridge tooth:
-
-- `blend_mode = ADD`
-- `target_depth_offset = 0.05` to `0.12`
-- `effect_radius = 0.12` to `0.22`
-- `soil_state_output = PLOWED`
-
-Exact leveling tooth:
-
-- `blend_mode = REPLACE_EXACT`
-- `target_depth_offset = desired_world_y`
-
-### Placement Rules
-
-- Keep teeth as direct or nested children of the implement scene root.
-- Mirror left and right teeth for balanced pull forces.
-- Keep tooth spacing near the visual blade spacing.
-- Prefer several small radius teeth over one very large radius for stable detail.
-
-### Runtime Toggle Rules
-
-- Toggle individual teeth by setting `is_engaged`.
-- Engagement can be dynamic per tooth at runtime.
-- Disabled teeth are skipped cleanly by batch collection.
+| Field | Purpose |
+| --- | --- |
+| `requested_area` | Requested area in m2. |
+| `successful_area` | Accepted and committed area in m2. |
+| `rejected_area` | Rejected area in m2. |
+| `yield_generated` | Commodity dictionary, for example `{"item.wheat": 14.5}`. |
+| `rejected_unfarmable` | Gate-1 rejections. |
+| `rejected_wrong_state` | Gate-2 rejections. |
+| `rejected_height` | Gate-3 rejections. |
+| `rejected_budget` | Budget-limit rejections. |
 
 ---
 
-## Ground Contact and Gates
+## 3. Arbitrator Pipeline (SoilLayerService)
 
-`PlowAttachment` applies deformation only when:
+### 3.1 Entry point
 
-- Implement is lowered.
-- PTO is active.
-- Vehicle speed exceeds `min_apply_speed_sq`.
-- Ground contact passes either overlap checks or terrain-height probe fallback.
+All world edits route through:
 
-Ground probe tuning:
+`process_work_batch(requests: Array, force_collision_rebuild_now: bool = false, collect_debug_tiles: bool = false) -> Array`
 
-- `ground_contact_probe_margin` controls tolerance above terrain.
-- `ground_contact_probe_depth` controls tolerance below terrain.
+Legacy compatibility wrappers call into this:
 
----
+- `plow_world(...)`
+- `seed_world(...)`
+- `harvest_world(...)`
+- `apply_ground_effectors(...)` (legacy dictionary bridge)
 
-## Teeth Collision Region Behavior
+### 3.2 Geometry rasterization rules
 
-The `TeethCollisionRegion` Area3D is managed intentionally:
+- Point/radius: center-distance inclusion.
+- Line sweep: capsule test using point-to-segment distance.
+- Quad sweep: polygon inclusion in XZ plane.
 
-- Active when not plowing (raised or inactive).
-- Disabled when lowered and actively plowing.
+### 3.3 Center-point tile selection rule
 
-This prevents terrain-collision fighting during deformation while preserving non-plowing interactions.
+Tile `(x, z)` is only selected when its center `(x + 0.5, z + 0.5)` lies inside the geometry test.
 
----
+This prevents edge clipping artifacts and jagged partial-corner updates.
 
-## X-Axis Rigidity and Anti-Sway
+### 3.4 Deduplication
 
-`HitchSocket3D` exposes dedicated lateral stabilization:
+Tiles are deduplicated per request using dictionary-as-set semantics before validation.
 
-- `x_axis_position_stiffness`
-- `x_axis_velocity_damping`
-- `max_x_axis_stabilization_g`
-- `x_axis_yaw_damping`
-- `max_x_axis_yaw_stabilization_torque`
+This ensures overlapping geometry cannot multi-hit the same tile in one request pass.
 
-Current tractor defaults are overridden in Scenes/Vehicles/Truck.tscn for a tighter, less swingy plow response.
+### 3.5 Validation gates
 
-If you tune further, increase damping before increasing stiffness to avoid oscillation.
+Gates execute in this strict order:
 
----
+1. Map mask (`FarmData.can_plow_at`) -> `rejected_unfarmable`
+2. Soil state transition eligibility -> `rejected_wrong_state`
+3. Height/engagement check -> `rejected_height`
+4. Budget clamp (`max_budget`) -> `rejected_budget`
 
-## Performance Model
+### 3.6 Execution rules
 
-`SoilLayerService` is optimized for sustained plowing:
+- `TILLAGE`: updates terrain and logical state (`soil_state_output`, depth/blend payload).
+- `SOWING`: delegates to `FarmData.plant_crop(...)`, updates soil overlay.
+- `HARVESTING`: delegates to `FarmData.harvest_crop(...)`, then computes maturity-scaled yield.
 
-- Movement-threshold batching in `Implement3D`.
-- Path interpolation at `ground_effect_segment_length_meters`.
-- Deferred map rebuild flush in `_process`.
-- Coalesced map updates by `map_rebuild_interval_seconds`.
-- Edited-region marking to avoid broad rebuild churn.
-- Collision updates decoupled from every stamp via `collision_rebuild_distance_meters`.
+### 3.7 Harvest yield formula
 
-Primary tuning knobs:
+For each harvested tile:
 
-- `effector_move_threshold_meters` in `Implement3D`.
-- `ground_effect_segment_length_meters` in `SoilLayerService`.
-- `map_rebuild_interval_seconds` in `SoilLayerService`.
-- `collision_rebuild_distance_meters` in `SoilLayerService`.
+$$
+growth\_ratio = clamp\left(\frac{now\_minutes - planted\_at\_minute}{growth\_minutes\_required}, 0, 1\right)
+$$
 
----
+$$
+final\_yield = base\_tile\_yield \times growth\_ratio
+$$
 
-## Save and Load Behavior
+The final `yield_generated` dictionary is the sum of all accepted harvested tiles.
 
-Terrain deformation is persisted per slot.
+### 3.8 Deferred terrain updates
 
-- Save path: slot temporary folder writes `terrain_modified.res`.
-- Load path: `terrain_modified.res` is restored before final world rebuild.
-- Fallback path: Terrain3D directory save/load is used when needed.
-- New game safety: `MapManager` duplicates terrain data at runtime to protect pristine map assets.
-
-This guarantees slot-isolated terrain state without mutating source map resources.
+Terrain writes are coalesced through existing map update throttles. Collision rebuild remains distance-throttled.
 
 ---
 
-## Extension Guide for New Implements
+## 4. Implement Runtime Model
 
-To add another soil tool (for example seeder rows or ridger bars):
+`Implement3D` is the base class for all vehicle-mounted implements.
 
-1. Inherit from `Implement3D`.
-2. Add one or more `GroundEffector3D` markers in the scene.
-3. Reuse `collect_ground_effector_batch()` and submit to `SoilLayerService.apply_ground_effectors()`.
-4. Gate by implement state and contact, similar to `PlowAttachment`.
-5. Use per-tooth `soil_state_output` for desired logical transitions.
+### 4.1 Capability and emission gates
 
-No new terrain pipeline is required.
+Implemented as exported controls:
+
+- `requires_pto`
+- `requires_lowering`
+- `min_work_speed`
+- `max_work_speed`
+
+`can_emit_work_requests(speed_mps)` is the shared gate for request generation.
+
+### 4.2 Geometry emission modes
+
+- Legacy/standard: per-effector line sweeps from `GroundEffector3D`
+- Wide implements: span-quad sweep using `Effector_Left` and `Effector_Right` markers
+
+### 4.3 GroundEffector3D contract
+
+Each effector can emit a typed request via:
+
+`to_work_request(operation, previous_position, payload, source_tag, max_budget)`
+
+Key runtime properties:
+
+- `effect_radius`
+- `target_depth_offset`
+- `blend_mode`
+- `soil_state_output`
+- `is_engaged`
+- `engagement_depth_margin`
 
 ---
 
-## Validation Checklist
+## 5. Hitch Physics Status
 
-1. Lower and activate plow.
-2. Drive forward and confirm continuous deformation with no large frame spikes.
-3. Raise plow and confirm deformation stops.
-4. Save slot, reload slot, confirm terrain modifications persist.
-5. Start a new game and confirm pristine map remains untouched.
-6. Add one new tooth marker and verify it contributes immediately.
+Current stable runtime uses the established hitch coupling model in `HitchSocket3D`.
+
+- Drawbar and 3-point continue using the existing tuned PD-style coupling path.
+- X-axis anti-sway controls remain available:
+   - `x_axis_position_stiffness`
+   - `x_axis_velocity_damping`
+   - `max_x_axis_stabilization_g`
+   - `x_axis_yaw_damping`
+   - `max_x_axis_yaw_stabilization_torque`
+
+Planned future work:
+
+- Reintroduce stronger 3-point rigidity controls after profiling and playtesting.
+- Reintroduce generalized implement drag once vehicle feel is revalidated.
 
 ---
 
-## Troubleshooting
+## 6. How To Add a New Implement (Complete Setup)
 
-No deformation:
+This is the official setup checklist for new implements.
 
-- Verify implement is lowered and active.
-- Check tooth `is_engaged` values.
-- Ensure speed is above `min_apply_speed_sq`.
-- Confirm tooth markers are children in the implement scene and use `GroundEffector3D` script.
+### Step 1: Scene setup
 
-Too much FPS drop:
+1. Create a new scene inheriting from an implement base scene or from a scene with `Implement3D` script.
+2. Add a `HitchPoint` marker at the physical connection location.
+3. Add collision and interaction geometry as needed.
 
-- Increase `map_rebuild_interval_seconds`.
-- Increase `effector_move_threshold_meters`.
-- Increase `ground_effect_segment_length_meters` moderately.
-- Increase `collision_rebuild_distance_meters`.
+### Step 2: Choose hitch type and behavior
 
-Plow still swings laterally:
+In `Implement3D` exports:
 
-- Increase `x_axis_velocity_damping` first.
-- Increase `x_axis_yaw_damping` second.
-- Raise stiffness after damping if needed.
+1. Set `required_hitch_type` (`HITCH_3_POINT`, `HITCH_DRAWBAR`, `FRONT_LOADER`).
+2. Set `required_power_kw`.
+3. Configure gating (`requires_pto`, `requires_lowering`, speed window).
+
+### Step 3: Add work geometry
+
+Choose one:
+
+1. Marker-based effectors:
+   - Add one or more `GroundEffector3D` markers.
+   - Set radius/depth/blend/state output.
+2. Span quad mode:
+   - Enable `use_span_quad_mode`.
+   - Add `Effector_Left` and `Effector_Right` markers and bind paths.
+
+### Step 4: Implement script logic
+
+Subclass `Implement3D` (for example `PlowAttachment`) and:
+
+1. Apply local operation gates (ground contact, minimum speed, etc.).
+2. Generate requests via `collect_work_requests(...)`.
+3. Submit to `SoilLayerService.process_work_batch(...)`.
+4. Consume `WorkReport` for resource updates and user feedback.
+
+### Step 5: Register in entity definitions
+
+Create/update JSON in `Data/Entities/*.json`:
+
+1. Set `id`.
+2. Set `view_scene` to implement scene.
+3. Add required components (`transform`, `container`, other custom components).
+
+### Step 6: Spawn and verify
+
+1. Spawn via map spawn table or developer console.
+2. Attach to a compatible socket.
+3. Validate lowering, PTO, drag, and report behavior.
+
+---
+
+## 7. Tool Integration
+
+Hand tools (hoe/seed and future harvest tools) should construct point-radius `WorkRequest` packets and use `WorkReport` outcomes for:
+
+- success/fail feedback
+- stamina/resource consumption
+- future UI notifications
+
+The same gate logic applies to tools and implements through the arbitrator.
+
+---
+
+## 8. Save/Load and Runtime Safety
+
+Terrain and soil behavior remains slot-safe:
+
+- Runtime terrain data is isolated from pristine source data on new game.
+- Save writes deformed terrain into slot runtime assets.
+- Load restores runtime terrain before rebuild and streaming stabilization.
+
+`MapManager` now attempts runtime isolation across both Terrain3D data and storage APIs.
+
+---
+
+## 9. Debugging and Observability
+
+### 9.1 Work report summaries
+
+`SimulationDebugOverlay` displays the latest work report summaries from `SoilLayerService.get_last_work_report_summaries()`.
+
+### 9.2 Current rejection strategy
+
+V1 uses summary counters, not per-tile log spam.
+
+Plow attachment emits throttled starvation logs when entire passes are rejected.
+
+---
+
+## 10. Performance Controls
+
+Primary controls:
+
+- `effector_move_threshold_meters` (`Implement3D`)
+- `ground_effect_segment_length_meters` (`SoilLayerService`)
+- `map_rebuild_interval_seconds` (`SoilLayerService`)
+- `collision_rebuild_distance_meters` (`SoilLayerService`)
+
+Guideline: increase damping and thresholds before increasing brute-force stiffness.
+
+---
+
+## 11. Validation Checklist
+
+### Functional
+
+1. Tillage only affects farmable mask regions.
+2. Sowing only succeeds on plowed tiles.
+3. Harvest yield scales by maturity ratio.
+4. Overlap passes do not multi-hit same tile per request.
+5. Budget clamps accepted tiles correctly.
+
+### Physics
+
+1. 3-point hitch remains stable under acceleration/braking.
+2. No NaN/explosion under hard-stop snag scenarios.
+
+### Persistence
+
+1. Save/load preserves terrain modifications.
+2. New game does not mutate pristine terrain resources.
+
+---
+
+## 12. Troubleshooting
+
+### No soil changes
+
+1. Verify implement is lowered and PTO state satisfies gates.
+2. Verify effector markers are using `GroundEffector3D`.
+3. Check speed and contact gates.
+4. Inspect debug overlay work summary for rejection reason distribution.
+
+### Hitch oscillation
+
+1. Increase `x_axis_velocity_damping` first.
+2. Increase `x_axis_yaw_damping` second.
+3. Increase `x_axis_position_stiffness` after damping is stable.
